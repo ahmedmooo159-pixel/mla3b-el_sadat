@@ -67,28 +67,43 @@ async function handleSignup(email, password, phone) {
     btn.disabled = true;
     btn.textContent = 'جاري الإنشاء...';
     
-    const { data, error } = await window.supabaseClient.auth.signUp({ email, password });
-    
-    if (error) {
-        errorDiv.textContent = error.message;
-        btn.disabled = false;
-        btn.textContent = 'اعمل الحساب';
-    } else {
-        const userId = data.user.id;
-        const { error: dbError } = await window.supabaseClient.from('owners').insert([
-            { id: userId, email: email, phone: phone }
-        ]);
+    try {
+        // تأخير بسيط لتجنب rate limiting
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
-        if (dbError) {
-            errorDiv.textContent = 'الحساب اتعمل بس في مشكلة في حفظ البيانات: ' + dbError.message;
+        const { data, error } = await window.supabaseClient.auth.signUp({ 
+            email, 
+            password,
+            options: {
+                emailRedirectTo: `${window.location.origin}/auth/callback`
+            }
+        });
+        
+        if (error) {
+            errorDiv.textContent = error.message;
             btn.disabled = false;
             btn.textContent = 'اعمل الحساب';
         } else {
-            successDiv.textContent = 'تم إنشاء الحساب بنجاح! جاري تحويلك...';
-            setTimeout(() => {
-                window.location.href = 'dashboard.html';
-            }, 1500);
+            const userId = data.user.id;
+            const { error: dbError } = await window.supabaseClient.from('owners').insert([
+                { id: userId, email: email, phone: phone }
+            ]);
+            
+            if (dbError) {
+                errorDiv.textContent = 'الحساب اتعمل بس في مشكلة في حفظ البيانات: ' + dbError.message;
+                btn.disabled = false;
+                btn.textContent = 'اعمل الحساب';
+            } else {
+                successDiv.textContent = 'تم إنشاء الحساب بنجاح! جاري تحويلك...';
+                setTimeout(() => {
+                    window.location.href = 'dashboard.html';
+                }, 1500);
+            }
         }
+    } catch (err) {
+        errorDiv.textContent = 'خطأ: ' + err.message;
+        btn.disabled = false;
+        btn.textContent = 'اعمل الحساب';
     }
 }
 
