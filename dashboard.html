@@ -71,7 +71,7 @@
         </main>
     </div>
 
-    <script src="js/supabase.js"></script>
+    <!-- <script src="js/supabase.js"></script>
     <script src="js/auth.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
@@ -322,7 +322,150 @@
                 lucide.createIcons();
             }
         }
-    </script>
+    </script> -->
+
+    <script src="js/supabase.js"></script>
+<script src="js/auth.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', async () => {
+        lucide.createIcons();
+        
+        // استخدم window.supabaseClient بدل supabase
+        window.supabaseClient.auth.onAuthStateChange(async (event, session) => {
+            if (session?.user) {
+                loadOwnerPitches(session.user.id);
+            }
+        });
+        
+        // استخدم window.currentUser بدل currentUser
+        if (window.currentUser) {
+            checkAdminRole(window.currentUser.id).then(isAdmin => {
+                if (isAdmin) {
+                    window.location.href = 'admin-dashboard.html';
+                } else {
+                    loadOwnerPitches(window.currentUser.id);
+                    loadRefundRequests(window.currentUser.id);
+                }
+            });
+        }
+    });
+
+    async function checkAdminRole(userId) {
+        try {
+            // استخدم window.supabaseClient هنا كمان
+            const { data } = await window.supabaseClient.from('owners').select('role').eq('id', userId).single();
+            return data?.role === 'admin';
+        } catch { return false; }
+    }
+
+    async function loadOwnerPitches(ownerId) {
+        try {
+            const { data: ownerData } = await window.supabaseClient
+                .from('owners')
+                .select('telegram_chat_id')
+                .eq('id', ownerId)
+                .single();
+                
+            if (ownerData && ownerData.telegram_chat_id) {
+                document.getElementById('telegramChatId').value = ownerData.telegram_chat_id;
+            }
+            
+            const { data: pitches, error } = await window.supabaseClient
+                .from('pitches')
+                .select('*')
+                .eq('owner_id', ownerId)
+                .order('created_at', { ascending: false });
+            
+            // باقي الـ code متساوي...
+        } catch (err) {
+            console.error("Error loading data:", err);
+        }
+    }
+    
+    document.getElementById('saveTelegramBtn').addEventListener('click', async () => {
+        const chatId = document.getElementById('telegramChatId').value.trim();
+        const btn = document.getElementById('saveTelegramBtn');
+        btn.textContent = '...';
+        
+        try {
+            const { error } = await window.supabaseClient
+                .from('owners')
+                .update({ telegram_chat_id: chatId })
+                .eq('id', window.currentUser.id);  // استخدم window.currentUser هنا
+                
+            if (error) throw error;
+            btn.textContent = 'اتحفظ!';
+            btn.style.borderColor = '#10b981';
+            btn.style.color = '#10b981';
+        } catch (err) {
+            alert('حصلت مشكلة وإحنا بنحفظ');
+        }
+        
+        setTimeout(() => {
+            btn.textContent = 'احفظ';
+            btn.style.borderColor = '';
+            btn.style.color = '';
+        }, 2000);
+    });
+
+    async function loadRefundRequests(ownerId) {
+        try {
+            const { data: pitches } = await window.supabaseClient.from('pitches').select('id, name').eq('owner_id', ownerId);
+            if (!pitches || pitches.length === 0) return;
+            
+            const pitchIds = pitches.map(p => p.id);
+            
+            const { data: refunds, error } = await window.supabaseClient
+                .from('refund_requests')
+                .select(`
+                    id, refund_amount, wallet_number, status, created_at,
+                    bookings!inner (
+                        customer_name, customer_phone, booking_date,
+                        slots!inner ( pitch_id )
+                    )
+                `)
+                .eq('status', 'pending')
+                .in('bookings.slots.pitch_id', pitchIds)
+                .order('created_at', { ascending: false });
+                
+            if (error) throw error;
+            
+            // باقي الـ code...
+        } catch (err) {
+            console.error("Error loading refunds:", err);
+        }
+    }
+    
+    async function markRefunded(refundId, btnEl) {
+        if (!confirm('متأكد إنك حولت الفلوس للعميل؟')) return;
+        
+        btnEl.disabled = true;
+        btnEl.textContent = 'بنحدث...';
+        
+        try {
+            const { error } = await window.supabaseClient
+                .from('refund_requests')
+                .update({ status: 'refunded', refunded_at: new Date().toISOString() })
+                .eq('id', refundId);
+                
+            if (error) throw error;
+            
+            btnEl.closest('div').parentElement.style.opacity = '0.5';
+            btnEl.textContent = 'تم التحويل 💯';
+            setTimeout(() => {
+                btnEl.closest('div').parentElement.remove();
+                if (document.getElementById('refundsList').children.length === 0) {
+                    document.getElementById('refundsSection').style.display = 'none';
+                }
+            }, 1000);
+        } catch (err) {
+            alert('حصلت مشكلة: ' + err.message);
+            btnEl.disabled = false;
+            btnEl.innerHTML = '<i data-lucide="check" style="width: 16px; height: 16px;"></i> أكدت التحويل';
+            lucide.createIcons();
+        }
+    }
+</script>
 
     <script>
         if ('serviceWorker' in navigator) {
