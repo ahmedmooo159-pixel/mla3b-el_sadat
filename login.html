@@ -6,7 +6,7 @@
     <title>تسجيل الدخول للمالكين</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0"></script>
     <link rel="stylesheet" href="css/style.css">
 
     <link rel="manifest" href="/manifest.json">
@@ -44,15 +44,40 @@
         </main>
     </div>
 
+    <!-- ترتيب الـ scripts مهم! -->
     <script src="js/supabase.js"></script>
     <script src="js/auth.js"></script>
+    
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
+            
+            // تأكد من تحميل handleLogin
+            if (typeof handleLogin !== 'function') {
+                console.error('handleLogin is not defined');
+                return;
+            }
+            
             const form = document.getElementById('loginForm');
+            if (!form) {
+                console.error('loginForm element not found');
+                return;
+            }
+            
             form.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                await handleLogin(document.getElementById('email').value, document.getElementById('password').value);
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+                
+                if (!email || !password) {
+                    const errorDiv = document.getElementById('authError');
+                    if (errorDiv) {
+                        errorDiv.textContent = 'الإيميل والباسورد مطلوبين!';
+                    }
+                    return;
+                }
+                
+                await handleLogin(email, password);
             });
         });
     </script>
