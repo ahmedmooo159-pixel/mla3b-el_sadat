@@ -1,4 +1,5 @@
-const CACHE_NAME = 'mal3b-cache-v1';
+const CACHE_NAME = 'mal3b-cache-v3';
+
 const urlsToCache = [
   '/',
   '/index.html',
