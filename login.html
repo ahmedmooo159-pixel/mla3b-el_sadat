@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل الدخول للمالكين</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="css/style.css">
+
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0f172a">
+</head>
+<body>
+    <div class="app-container">
+        <header class="main-header">
+            <div class="logo">
+                <i data-lucide="goal"></i>
+                <a href="index.html" style="color: inherit; text-decoration: none;"><h1>ملاعب مصر</h1></a>
+            </div>
+        </header>
+
+        <main id="app-content" class="auth-page">
+            <div class="auth-card">
+                <h2>تسجيل الدخول</h2>
+                <p>يا هلا بيك يا كابتن في لوحة المالكين</p>
+                <form id="loginForm" class="auth-form">
+                    <div class="form-group">
+                        <label>الإيميل</label>
+                        <input type="email" id="email" required placeholder="owner@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label>الباسورد</label>
+                        <input type="password" id="password" required placeholder="********">
+                    </div>
+                    <div id="authError" class="error-message"></div>
+                    <button type="submit" class="btn btn-primary btn-full" id="loginSubmitBtn">دخول</button>
+                </form>
+                <div class="auth-links">
+                    <span>معندكش حساب؟</span> <a href="signup.html">سجل دلوقتي كصاحب ملعب</a>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/supabase.js"></script>
+    <script src="js/auth.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            const form = document.getElementById('loginForm');
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await handleLogin(document.getElementById('email').value, document.getElementById('password').value);
+            });
+        });
+    </script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js');
+            });
+        }
+    </script>
+</body>
+</html>

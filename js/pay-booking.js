@@ -1,0 +1,148 @@
+// js/pay-booking.js
+
+document.addEventListener('DOMContentLoaded', async () => {
+    lucide.createIcons();
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const bookingId = urlParams.get('id');
+    
+    if (!bookingId) {
+        alert("معرف الحجز غير موجود.");
+        window.location.href = 'index.html';
+        return;
+    }
+    
+    await loadPaymentDetails(bookingId);
+    
+    const uploadForm = document.getElementById('uploadReceiptForm');
+    if (uploadForm) {
+        uploadForm.addEventListener('submit', (e) => handleReceiptUpload(e, bookingId));
+    }
+});
+
+async function loadPaymentDetails(bookingId) {
+    const loading = document.getElementById('loadingIndicator');
+    const content = document.getElementById('paymentContent');
+    
+    try {
+        // Fetch booking info with slot and pitch info to get owner payment details
+        const { data: booking, error: bookingErr } = await supabase
+            .from('bookings')
+            .select(`
+                id, status, created_at,
+                slots (
+                    pitches (
+                        vodafone_cash, instapay_link
+                    )
+                )
+            `)
+            .eq('id', bookingId)
+            .single();
+            
+        if (bookingErr) throw bookingErr;
+        
+        if (booking.status === 'confirmed') {
+            loading.style.display = 'none';
+            document.getElementById('successContent').style.display = 'block';
+            return;
+        }
+        
+        // Check if 10 min hold expired
+        const now = new Date();
+        const diff = (now - new Date(booking.created_at)) / 60000;
+        if (diff > 10) {
+            loading.innerHTML = `
+                <i data-lucide="x-circle" style="width: 48px; height: 48px; color: #ef4444; margin-bottom: 10px;"></i>
+                <h3 style="color: #ef4444;">انتهت مهلة الدفع</h3>
+                <p>لقد مر أكثر من 10 دقائق ولم يتم رفع إيصال الدفع. تم إلغاء الحجز المبدئي وإعادة إتاحة الموعد للجميع.</p>
+                <a href="index.html" class="btn btn-outline" style="margin-top: 20px;">العودة للرئيسية</a>
+            `;
+            lucide.createIcons();
+            
+            // Optionally auto-cancel in DB, though our logic in pitch-details treats it as cancelled automatically
+            await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', bookingId);
+            return;
+        }
+        
+        const pitch = booking.slots.pitches;
+        
+        document.getElementById('vCashNum').textContent = pitch.vodafone_cash || 'غير محدد من المالك';
+        if (pitch.instapay_link) {
+            document.getElementById('instaPayDiv').style.display = 'block';
+            document.getElementById('instaLink').textContent = pitch.instapay_link;
+        }
+        
+        loading.style.display = 'none';
+        content.style.display = 'block';
+        
+    } catch (err) {
+        console.error(err);
+        loading.textContent = "حدث خطأ أثناء تحميل البيانات.";
+    }
+}
+
+async function handleReceiptUpload(e, bookingId) {
+    e.preventDefault();
+    
+    const btn = document.getElementById('submitReceiptBtn');
+    const errorDiv = document.getElementById('uploadError');
+    const successDiv = document.getElementById('uploadSuccess');
+    const fileInput = document.getElementById('receiptImage');
+    
+    errorDiv.textContent = '';
+    
+    if (fileInput.files.length === 0) {
+        errorDiv.textContent = "الرجاء اختيار صورة الإيصال.";
+        return;
+    }
+    
+    const file = fileInput.files[0];
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i data-lucide="loader" style="animation: spin 2s linear infinite;"></i> جاري الرفع والتأكيد...';
+    
+    try {
+        // Upload to Storage
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${bookingId}-${Date.now()}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+            .from('booking_receipts')
+            .upload(fileName, file);
+            
+        if (uploadError) throw new Error("فشل في رفع الصورة: " + uploadError.message);
+        
+        const { data: publicUrlData } = supabase.storage
+            .from('booking_receipts')
+            .getPublicUrl(fileName); // Even if bucket is false public, usually we just store the path, but let's store path.
+            
+        const filePath = fileName; 
+        
+        // Update booking status
+        const { error: updateError } = await supabase
+            .from('bookings')
+            .update({
+                status: 'confirmed',
+                payment_screenshot: filePath
+            })
+            .eq('id', bookingId);
+            
+        if (updateError) throw new Error("تم الرفع ولكن حدث خطأ في تحديث الحجز: " + updateError.message);
+        
+        document.getElementById('paymentContent').style.display = 'none';
+        document.getElementById('successContent').style.display = 'block';
+        
+        // Notify Telegram via Edge Function
+        try {
+            await supabase.functions.invoke('notify-owner-booking', {
+                body: { booking_id: bookingId }
+            });
+        } catch (ignore) { console.log('Telegram notify failed, ignoring for now'); }
+        
+    } catch (err) {
+        errorDiv.textContent = err.message;
+        btn.disabled = false;
+        btn.innerHTML = '<i data-lucide="upload"></i> رفع الإيصال وتأكيد الحجز';
+        lucide.createIcons();
+    }
+}

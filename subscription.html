@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تفعيل الاشتراك | ملاعب مدينة السادات</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="css/style.css">
+
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0f172a">
+</head>
+<body>
+    <div class="app-container">
+        <header class="main-header">
+            <div class="logo">
+                <i data-lucide="goal"></i>
+                <a href="dashboard.html" style="color: inherit; text-decoration: none;"><h1>ملاعب مصر</h1></a>
+            </div>
+            <nav class="nav-links">
+                <a href="dashboard.html" class="nav-link">لوحة التحكم</a>
+            </nav>
+        </header>
+
+        <main id="app-content">
+            <div class="form-container">
+                <h2>دفع الاشتراك الشهري للملعب 💳</h2>
+                <p style="text-align: center; color: var(--text-muted); margin-bottom: 30px;">
+                    عشان ملعبك يظهر للناس ويبدأ يجيلك حجوزات، حول مبلغ الاشتراك وارفع سكرين شوت هنا.
+                </p>
+
+                <div style="background-color: rgba(34, 197, 94, 0.1); border: 1px solid var(--primary-color); padding: 20px; border-radius: 12px; text-align: center; margin-bottom: 30px;">
+                    <h3 style="color: var(--primary-color); margin-bottom: 10px;">هتحول فين؟</h3>
+                    <p style="font-size: 1.1rem; margin-bottom: 5px;">قيمة الاشتراك: <strong id="subscriptionFee">500</strong> <strong>جنيه</strong> في الشهر</p>
+                    <p style="font-size: 1.2rem; margin-bottom: 5px;">فودافون كاش: <strong id="vodafoneCashNumber">ثواني بنحمل...</strong></p>
+                    <p style="font-size: 1.2rem;">إنستاباي: <strong id="instapayLink">ثواني بنحمل...</strong></p>
+                </div>
+
+                <form id="subscriptionForm">
+                    <!-- Hidden input to store pitch ID from URL -->
+                    <input type="hidden" id="pitchId">
+                    
+                    <div class="form-group">
+                        <label>وصل الدفع (سكرين شوت للتحويل)</label>
+                        <input type="file" id="paymentScreenshot" accept="image/*" required>
+                        <small style="color: var(--text-muted); display: block; margin-top: 5px;">
+                            تأكد إن رقم التحويل والمبلغ ظاهرين بوضوح عشان نراجع طلبك بسرعة.
+                        </small>
+                    </div>
+                    
+                    <div id="formError" class="error-message"></div>
+                    <div id="formSuccess" class="success-message"></div>
+                    
+                    <div style="margin-top: 30px; text-align: center;">
+                        <button type="submit" class="btn btn-primary btn-large btn-full" id="submitBtn">
+                            <i data-lucide="upload-cloud"></i> ابعت للمراجعة 🚀
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/supabase.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/subscription.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            
+            // Get pitch ID from URL params
+            const urlParams = new URLSearchParams(window.location.search);
+            const pitchId = urlParams.get('id');
+            
+            if (!pitchId) {
+                alert("معرف الملعب مش موجود!");
+                window.location.href = 'dashboard.html';
+                return;
+            }
+            
+            document.getElementById('pitchId').value = pitchId;
+            
+            const form = document.getElementById('subscriptionForm');
+            form.addEventListener('submit', handleSubscriptionUpload);
+        });
+    </script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js');
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ضيف ملعب جديد | ملاعب مصر</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="css/style.css">
+
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0f172a">
+</head>
+<body>
+    <div class="app-container">
+        <header class="main-header">
+            <div class="logo">
+                <i data-lucide="goal"></i>
+                <a href="dashboard.html" style="color: inherit; text-decoration: none;"><h1>ملاعب مصر</h1></a>
+            </div>
+            <nav class="nav-links">
+                <a href="dashboard.html" class="nav-link">ارجع للوحة التحكم</a>
+            </nav>
+        </header>
+
+        <main id="app-content">
+            <div class="form-container">
+                <h2>ضيف ملعب جديد 🏟️</h2>
+                <form id="createPitchForm">
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label>اسم الملعب</label>
+                            <input type="text" id="pitchName" required placeholder="مثال: ملعب النجوم">
+                        </div>
+                        <div class="form-group" style="position: relative;">
+                            <label>المنطقة</label>
+                            <select id="pitchLocation" required style="appearance: none; cursor: pointer;">
+                                <option value="" disabled selected>بنجيب المناطق... ثواني</option>
+                            </select>
+                            <i data-lucide="chevron-down" style="position: absolute; left: 15px; top: 40px; color: var(--text-muted); pointer-events: none;"></i>
+                        </div>
+                        <div class="form-group">
+                            <label>سعر الساعة (بالجنيه)</label>
+                            <input type="number" id="pitchPrice" required placeholder="مثال: 150">
+                        </div>
+                        
+                        <div class="form-group" style="grid-column: 1 / -1; margin-top: 10px; border-top: 1px solid var(--border-color); padding-top: 20px;">
+                            <h3 style="color: var(--primary-color); margin-bottom: 15px;">طرق الدفع للّعيبة 💸</h3>
+                            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 15px;">تحب تستلم فلوس الحجوزات من اللعيبة إزاي؟</p>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>رقم فودافون كاش لاستقبال الفلوس</label>
+                            <input type="tel" id="vodafoneCash" placeholder="010XXXXXXXX">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>رابط إنستاباي (اختياري)</label>
+                            <input type="text" id="instapayLink" placeholder="yourname@instapay">
+                        </div>
+                        
+                        <div class="form-group" style="grid-column: 1 / -1; margin-top: 10px; border-top: 1px solid var(--border-color); padding-top: 20px;">
+                            <h3 style="color: var(--primary-color); margin-bottom: 15px;">سياسة الإلغاء والفلوس اللي هترجع 🔄</h3>
+                            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 15px;">حدد السياسة اللي النظام هيطبقها لو حد من اللعيبة حب يلغي حجزه.</p>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>المهلة المسموحة للإلغاء قبل الماتش (بالساعات)</label>
+                            <input type="number" id="cancelCutoffHours" value="24" min="1" max="72" placeholder="مثال: 24 ساعة">
+                            <small style="color: var(--text-muted); display: block; margin-top: 5px;">قبل الوقت ده: هيرجعله 100%. بعده: هيرجعله على حسب النسبة اللي تحت.</small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>نسبة الفلوس اللي هترجع بعد انتهاء المهلة (%)</label>
+                            <input type="number" id="refundPercentAfterCutoff" value="0" min="0" max="100" placeholder="مثال: 50">
+                            <small style="color: var(--text-muted); display: block; margin-top: 5px;">لو 0 مفيش فلوس هترجع، ولو 50 هيرجعله نص المبلغ.</small>
+                        </div>
+                        
+                        <div class="form-group" style="grid-column: 1 / -1;">
+                            <label>رقم موبايل الملعب</label>
+                            <input type="tel" id="pitchPhone" placeholder="01XXXXXXXXX">
+                        </div>
+                        <div class="form-group">
+                            <label>معرف تيليجرام (Chat ID)</label>
+                            <input type="text" id="telegramId" required placeholder="مثال: 123456789">
+                            <small style="color: var(--text-muted); display: block; margin-top: 5px;">
+                                هاته من البوت ده @userinfobot
+                            </small>
+                        </div>
+                        <div class="form-group">
+                            <label>صورة الملعب الرئيسية 📸</label>
+                            <input type="file" id="pitchPhoto" accept="image/*" required>
+                        </div>
+                    </div>
+                    
+                    <div id="formError" class="error-message"></div>
+                    <div id="formSuccess" class="success-message"></div>
+                    
+                    <div style="margin-top: 30px; text-align: center;">
+                        <button type="submit" class="btn btn-primary btn-large" id="submitBtn">
+                            <i data-lucide="save"></i> احفظ الملعب
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/supabase.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/pitch.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            const form = document.getElementById('createPitchForm');
+            form.addEventListener('submit', handlePitchCreation);
+        });
+    </script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js');
+            });
+        }
+    </script>
+</body>
+</html>

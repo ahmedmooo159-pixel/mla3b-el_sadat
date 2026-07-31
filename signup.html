@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إنشاء حساب جديد للمالكين</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="css/style.css">
+
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0f172a">
+</head>
+<body>
+    <div class="app-container">
+        <header class="main-header">
+            <div class="logo">
+                <i data-lucide="goal"></i>
+                <a href="index.html" style="color: inherit; text-decoration: none;"><h1>ملاعب مصر</h1></a>
+            </div>
+        </header>
+
+        <main id="app-content" class="auth-page">
+            <div class="auth-card">
+                <h2>حساب جديد</h2>
+                <p>ابتدى دلوقتي وظبط ملاعبك بسهولة</p>
+                <form id="signupForm" class="auth-form">
+                    <div class="form-group">
+                        <label>الإيميل</label>
+                        <input type="email" id="email" required placeholder="owner@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label>رقم الموبايل</label>
+                        <input type="tel" id="phone" required placeholder="01XXXXXXXXX">
+                    </div>
+                    <div class="form-group">
+                        <label>الباسورد (6 حروف على الأقل)</label>
+                        <input type="password" id="password" required minlength="6" placeholder="********">
+                    </div>
+                    <div id="authError" class="error-message"></div>
+                    <div id="authSuccess" class="success-message"></div>
+                    <button type="submit" class="btn btn-primary btn-full" id="signupSubmitBtn">اعمل الحساب</button>
+                </form>
+                <div class="auth-links">
+                    <span>عندك حساب بالفعل؟</span> <a href="login.html">سجل دخول</a>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/supabase.js"></script>
+    <script src="js/auth.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            const form = document.getElementById('signupForm');
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await handleSignup(
+                    document.getElementById('email').value, 
+                    document.getElementById('password').value,
+                    document.getElementById('phone').value
+                );
+            });
+        });
+    </script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js');
+            });
+        }
+    </script>
+</body>
+</html>

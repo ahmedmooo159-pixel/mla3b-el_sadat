@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>دفع العربون | ملاعب مدينة السادات</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        .deposit-highlight {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(59, 130, 246, 0.1));
+            border: 1px solid #8b5cf6;
+            padding: 20px;
+            border-radius: 16px;
+            margin-bottom: 25px;
+        }
+    </style>
+
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0f172a">
+</head>
+<body>
+    <div class="app-container">
+        <header class="main-header">
+            <div class="logo">
+                <i data-lucide="goal"></i>
+                <a href="index.html" style="color: inherit; text-decoration: none;"><h1>ملاعب مصر</h1></a>
+            </div>
+            <nav class="nav-links">
+                <a href="index.html" class="nav-link">الرئيسية</a>
+                <a href="my-bookings.html" class="nav-link">حجوزاتي</a>
+            </nav>
+        </header>
+
+        <main id="app-content">
+            <div class="form-container" style="max-width: 600px; text-align: center; margin: 40px auto;">
+                
+                <div id="loadingIndicator" style="padding: 40px;">
+                    <i data-lucide="loader" style="animation: spin 2s linear infinite; width: 40px; height: 40px; color: #8b5cf6;"></i>
+                    <p style="margin-top: 15px;">بنجيب تفاصيل العربون... ثواني يا نجم ⚽</p>
+                </div>
+                
+                <div id="depositContent" class="animate-fade-in" style="display: none;">
+                    <div style="background: rgba(139,92,246,0.1); padding: 20px; border-radius: 50%; width: 80px; height: 80px; margin: 0 auto 20px; display: flex; justify-content: center; align-items: center;">
+                        <i data-lucide="repeat" style="width: 40px; height: 40px; color: #8b5cf6;"></i>
+                    </div>
+                    
+                    <h2 style="color: #8b5cf6; margin-bottom: 10px;">ثبت حجزك الأسبوعي 🔒</h2>
+                    <p style="font-size: 1rem; margin-bottom: 25px; color: var(--text-muted);">
+                        ادفع العربون دلوقتي عشان تثبت ميعادك الأسبوعي الدائم. بعد التأكيد، الميعاد ده هيكون بتاعك ومحدش هيقدر يحجزه غيرك يا بطل.
+                    </p>
+                    
+                    <div class="deposit-highlight" style="text-align: right;">
+                        <h3 style="color: #8b5cf6; margin-bottom: 12px; border-bottom: 1px solid rgba(139,92,246,0.3); padding-bottom: 10px;">تفاصيل حجزك الأسبوعي</h3>
+                        <p style="margin-bottom: 8px;"><strong>الملعب:</strong> <span id="depositPitchName">...</span></p>
+                        <p style="margin-bottom: 8px;"><strong>ميعادك الثابت:</strong> <span id="depositSlotInfo">...</span></p>
+                        <p style="margin-bottom: 8px; font-size: 1.15rem; color: #8b5cf6;"><strong>قيمة العربون:</strong> <span id="depositAmount" style="font-size: 1.3rem;">0</span> جنيه</p>
+                    </div>
+                    
+                    <div style="background: var(--bg-dark); border: 1px solid var(--border-color); padding: 20px; border-radius: 14px; margin-bottom: 25px; text-align: right;">
+                        <h3 style="color: var(--primary-color); margin-bottom: 12px;">هتحول على فين؟</h3>
+                        <p style="font-size: 1.05rem; margin-bottom: 8px;">
+                            <i data-lucide="smartphone" style="width:16px; height:16px; vertical-align:middle; color:#ef4444;"></i>
+                            فودافون كاش: <strong id="pitchVCash" style="user-select:all;">...</strong>
+                        </p>
+                        <div id="pitchInstaDiv" style="display:none;">
+                            <p style="font-size: 1.05rem;">
+                                <i data-lucide="link" style="width:16px; height:16px; vertical-align:middle; color:#8b5cf6;"></i>
+                                إنستاباي: <strong id="pitchInstaPay" style="user-select:all;">...</strong>
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div style="background: var(--bg-card); border: 1px dashed #8b5cf6; padding: 25px; border-radius: 14px; margin-bottom: 25px;">
+                        <h3 style="margin-bottom: 12px;">ارفع وصل دفع العربون</h3>
+                        <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 18px;">
+                            حول قيمة العربون وبعدين ارفع صورة الوصل عشان ناكدلك الحجز الأسبوعي على طول.
+                        </p>
+                        <form id="depositUploadForm">
+                            <input type="file" id="depositImage" accept="image/*" required style="margin-bottom: 15px; width: 100%;">
+                            <div id="depositError" class="error-message"></div>
+                            <button type="submit" class="btn btn-full" id="submitDepositBtn" style="background: #8b5cf6; color: white; margin-top: 10px;">
+                                <i data-lucide="upload"></i> ارفع الوصل وثبت حجزك 🚀
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- Success state -->
+                <div id="successContent" class="animate-fade-in" style="display:none; text-align:center;">
+                    <div style="background: rgba(139,92,246,0.1); padding: 20px; border-radius: 50%; width: 80px; height: 80px; margin: 0 auto 20px; display: flex; justify-content: center; align-items: center;">
+                        <i data-lucide="check-circle" style="width: 40px; height: 40px; color: #8b5cf6;"></i>
+                    </div>
+                    <h2 style="color: #8b5cf6; margin-bottom: 10px;">عاش! تم تثبيت حجزك الأسبوعي 🎉</h2>
+                    <p style="margin-bottom: 10px;">ميعادك بقى محجوز باسمك كل أسبوع. هتحتاج بس تأكد حضورك وتدفع حق الساعة كل أسبوع قبل الميعاد بـ 4 أيام عشان منلغيهوش عليك.</p>
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 25px;">تقدر تتابع حجزك الأسبوعي من صفحة "حجوزاتي" برقم موبايلك.</p>
+                    <a href="my-bookings.html" class="btn btn-primary">روح لحجوزاتي</a>
+                </div>
+                
+            </div>
+        </main>
+    </div>
+
+    <script src="js/supabase.js"></script>
+    <script src="js/pay-deposit.js"></script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js');
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تفاصيل الملعب | ملاعب مدينة السادات</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="css/style.css">
+
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0f172a">
+</head>
+<body>
+    <div class="app-container">
+        <header class="main-header">
+            <div class="logo">
+                <i data-lucide="goal"></i>
+                <a href="index.html" style="color: inherit; text-decoration: none;"><h1>ملاعب مصر</h1></a>
+            </div>
+            <nav class="nav-links">
+                <a href="index.html" class="nav-link">الرئيسية</a>
+                <a href="my-bookings.html" class="nav-link">حجوزاتي</a>
+            </nav>
+        </header>
+
+        <main id="app-content">
+            <div id="loadingIndicator" style="text-align: center; padding: 60px; color: var(--text-muted);">
+                <div class="football-loader">⚽</div>
+                <p style="margin-top: 15px;">بنجيب تفاصيل الملعب... ثواني يا كابتن</p>
+            </div>
+            
+            <div id="pitchDetailsContainer" style="display: none;" class="animate-fade-in">
+                <!-- Cover Image -->
+                <div id="pitchCover" class="pitch-details-cover"></div>
+                
+                <div class="pitch-details-body">
+                    <div class="pitch-info-section">
+                        <h2 id="pitchNameTitle" style="font-size: 2.2rem; margin-bottom: 15px; color: var(--primary-color);">اسم الملعب</h2>
+                        <p class="pitch-location" style="font-size: 1.1rem; margin-bottom: 20px; color: var(--text-muted); display: flex; align-items: center; gap: 5px;">
+                            <i data-lucide="map-pin"></i> <span id="pitchLocationText">الموقع</span>
+                        </p>
+                        
+                        <div class="info-badges">
+                            <div class="badge">
+                                <i data-lucide="coins"></i>
+                                <span>السعر: <strong id="pitchPriceText">0</strong> جنيه / ساعة</span>
+                            </div>
+                            <div class="badge">
+                                <i data-lucide="phone"></i>
+                                <span>تواصل سريع</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="slots-section">
+                        <h3 style="margin-bottom: 20px; margin-top: 40px; font-size: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+                            المواعيد الفاضية دلوقتي ⏰
+                        </h3>
+                        
+                        <!-- For Sprint 3 we just build UI. Slot management is Sprint 4 -->
+                        <div id="slotsContainer" class="slots-grid">
+                            <!-- Slots will be populated here -->
+                        </div>
+                        
+                        <div id="noSlotsMsg" class="empty-state" style="display: none; padding: 30px;">
+                            <i data-lucide="calendar-x"></i>
+                            <h4>مفيش مواعيد متاحة حالياً! 😞</h4>
+                            <p style="font-size: 0.9rem;">صاحب الملعب لسه مضفش مواعيد جديده للحجز.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Booking Modal -->
+            <div id="bookingModal" class="modal-overlay" style="display: none;">
+                <div class="modal-content animate-fade-in">
+                    <div class="modal-header">
+                        <h3>تأكيد حجزك 🚀</h3>
+                        <button class="close-btn" onclick="closeBookingModal()"><i data-lucide="x"></i></button>
+                    </div>
+                    <div class="modal-body">
+                        <p id="bookingSlotInfo" style="margin-bottom: 20px; color: var(--text-muted); font-weight: bold;"></p>
+                        
+                        <form id="bookingForm">
+                            <input type="hidden" id="modalSlotId">
+                            <input type="hidden" id="modalBookingDate">
+                            
+                            <div class="form-group">
+                                <label>الاسم بالكامل</label>
+                                <input type="text" id="customerName" required placeholder="اسمك الثنائي">
+                            </div>
+                            <div class="form-group">
+                                <label>رقم الموبايل (عشان نكلمك لو في حاجة)</label>
+                                <input type="tel" id="customerPhone" required placeholder="010XXXXXXXX">
+                            </div>
+                            
+                            <div id="bookingError" class="error-message"></div>
+                            
+                            <button type="submit" class="btn btn-primary btn-full" id="confirmBookingBtn">
+                                احجز مبدئياً وروح للدفع
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Recurring Booking Modal -->
+            <div id="recurringModal" class="modal-overlay" style="display: none;">
+                <div class="modal-content animate-fade-in">
+                    <div class="modal-header">
+                        <h3 style="color: #8b5cf6;">حجز أسبوعي ثابت 🔄</h3>
+                        <button class="close-btn" onclick="closeRecurringModal()"><i data-lucide="x"></i></button>
+                    </div>
+                    <div class="modal-body">
+                        <div style="background: rgba(139, 92, 246, 0.1); border: 1px solid #8b5cf6; border-radius: 12px; padding: 15px; margin-bottom: 20px;">
+                            <p id="recurringSlotInfo" style="font-weight: bold; margin-bottom: 5px;"></p>
+                            <p style="font-size: 0.9rem; color: var(--text-muted);">الميعاد ده هيتحجزلك كل أسبوع أوتوماتيك. هتدفع دلوقتي عربون 50% من سعر الساعة عشان تثبته.</p>
+                            <p style="margin-top: 10px; font-size: 1.1rem; color: #8b5cf6;">العربون المطلوب: <strong id="recurringDepositAmount">0</strong> جنيه</p>
+                        </div>
+                        
+                        <form id="recurringForm">
+                            <input type="hidden" id="recurringSlotId">
+                            <div class="form-group">
+                                <label>الاسم بالكامل</label>
+                                <input type="text" id="recurringName" required placeholder="اسمك الثنائي">
+                            </div>
+                            <div class="form-group">
+                                <label>رقم الموبايل</label>
+                                <input type="tel" id="recurringPhone" required placeholder="010XXXXXXXX">
+                            </div>
+                            <div id="recurringError" class="error-message"></div>
+                            <button type="submit" class="btn btn-full" id="confirmRecurringBtn" style="background: #8b5cf6; color: white; margin-top: 10px;">
+                                كمل وادفع العربون
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/supabase.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/pitch-details.js"></script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js');
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,389 @@
+{
+  "project_name_en": "Futsal Pitch Booking Marketplace",
+  "project_name_ar": "منصة حجز ملاعب الكرة الخماسية",
+  "overview_en": "A multi-owner marketplace website where customers browse and book 5-a-side football pitches, pay via Vodafone Cash / InstaPay by uploading a payment screenshot, and pitch owners receive booking notifications and payment proof through a Telegram bot to approve or reject. Each owner manages their own pitch availability through an admin panel.",
+  "overview_ar": "موقع سوق (ماركت بليس) لأكتر من مالك ملعب، العميل بيتصفح الملاعب ويحجز موعد، وبيدفع أونلاين عن طريق فودافون كاش أو انستاباي برفع اسكرين شوت للدفع، ومالك الملعب بيستقبل إشعار بالحجز واسكرين الدفع عن طريق بوت تيليجرام عشان يوافق أو يرفض. كل مالك بيدير مواعيد ملعبه من لوحة أدمن خاصة بيه.",
+  "tech_stack": {
+    "frontend": "Vanilla HTML/CSS/JS — hosted free on Vercel",
+    "backend_and_db": "Supabase (Postgres + Auth + Storage) — free tier",
+    "file_storage": "Supabase Storage (لتخزين صور الملاعب واسكرين شوتات الدفع)",
+    "notifications": "Telegram Bot API (مجاني بالكامل)",
+    "hosting": "Vercel (Frontend) + Supabase Cloud (Backend/DB) — كله فري تير",
+    "dev_environment": "Google Antigravity (vibe coding)"
+  },
+  "design_principles": {
+    "en": "Mobile-first, fully responsive design — the site will mostly be used on phones (customers booking, owners checking their dashboard and Telegram bot), so every screen must be built and tested on mobile viewport sizes first, with desktop as a secondary layout.",
+    "ar": "الموقع لازم يبقى Mobile-first ومتجاوب بالكامل — لأن أغلب الاستخدام هيكون من الموبايل (العميل بيحجز، والمالك بيتابع لوحته وتيليجرام من موبايله)، فكل شاشة لازم تتبنى وتتجرب على مقاسات الموبايل الأول، والديسك توب يبقى ثانوي"
+  },
+  "sprints": [
+    {
+      "sprint_id": 0,
+      "title_en": "Project Setup & Planning",
+      "title_ar": "إعداد المشروع والتخطيط",
+      "goal_ar": "تجهيز البيئة والأدوات قبل البدء في الكود",
+      "tasks": [
+        {
+          "en": "Create Supabase project (free tier)",
+          "ar": "إنشاء مشروع على Supabase"
+        },
+        {
+          "en": "Design database schema: owners, pitches, slots, bookings, payments",
+          "ar": "تصميم قاعدة البيانات: المالكين، الملاعب، المواعيد، الحجوزات، المدفوعات"
+        },
+        {
+          "en": "Set up a plain HTML/CSS/JS project structure inside Antigravity, with the Supabase JS client library included",
+          "ar": "تجهيز مشروع HTML/CSS/JS عادي جوه Antigravity، مع إضافة مكتبة Supabase JS Client"
+        },
+        {
+          "en": "Set up a base mobile-first CSS structure (viewport meta tag, fluid layout, touch-friendly buttons/spacing) before building any screen",
+          "ar": "تجهيز أساس CSS بمنطق Mobile-first (viewport meta tag، تخطيط مرن، أزرار ومسافات مناسبة للمس) قبل ما تتبنى أي شاشة"
+        },
+        {
+          "en": "Create GitHub repo and connect to Vercel",
+          "ar": "عمل ريبو على GitHub وربطه بـ Vercel"
+        },
+        {
+          "en": "Create Telegram Bot via BotFather, save bot token",
+          "ar": "إنشاء بوت تيليجرام عن طريق BotFather وحفظ الـ Token"
+        }
+      ],
+      "deliverable_ar": "قاعدة بيانات جاهزة + مشروع فاضي شغال على Vercel + بوت تيليجرام موجود"
+    },
+    {
+      "sprint_id": 1,
+      "title_en": "Owner Auth & Onboarding",
+      "title_ar": "تسجيل دخول المالك وإنشاء الملعب",
+      "goal_ar": "المالك يقدر يعمل حساب ويضيف بيانات ملعبه",
+      "tasks": [
+        {
+          "en": "Owner signup/login using Supabase Auth",
+          "ar": "تسجيل وتسجيل دخول للمالك عن طريق Supabase Auth"
+        },
+        {
+          "en": "Form to create pitch profile: name, location, price/hour, photos, phone",
+          "ar": "فورم إنشاء ملعب: الاسم، الموقع، السعر بالساعة، صور، رقم تليفون"
+        },
+        {
+          "en": "Owner links their Telegram chat ID to receive notifications",
+          "ar": "المالك بيربط الشات آي دي بتاعه في تيليجرام عشان يوصله الإشعار"
+        },
+        {
+          "en": "Upload pitch photos to Supabase Storage",
+          "ar": "رفع صور الملعب على Supabase Storage"
+        }
+      ],
+      "deliverable_ar": "أي مالك يقدر يسجل ويضيف ملعبه بكل بياناته"
+    },
+    {
+      "sprint_id": 2,
+      "title_en": "Owner Subscription & Access Control",
+      "title_ar": "اشتراك المالك الشهري والتحكم في الظهور",
+      "goal_ar": "المالك يدفع اشتراك شهري ثابت للمنصة عشان ملعبه يفضل ظاهر ومتاح للحجز",
+      "tasks": [
+        {
+          "en": "Add subscription_status and subscription_expires_at fields to pitch record",
+          "ar": "إضافة حقول (حالة الاشتراك) و(تاريخ انتهاء الاشتراك) لبيانات الملعب"
+        },
+        {
+          "en": "Owner uploads payment screenshot for the monthly subscription (Vodafone Cash/InstaPay to the platform's own number)",
+          "ar": "المالك بيرفع اسكرين شوت دفع الاشتراك الشهري (فودافون كاش/انستاباي على رقم المنصة نفسها)"
+        },
+        {
+          "en": "Platform admin (you) receives subscription payment proof via Telegram bot and approves it manually",
+          "ar": "أنت (كأدمن المنصة) بتستقبل إثبات دفع الاشتراك عن طريق بوت تيليجرام وبتوافق عليه يدويًا"
+        },
+        {
+          "en": "On approval, set subscription active for 30 days from approval date",
+          "ar": "بعد الموافقة، يتفعّل الاشتراك لمدة 30 يوم من تاريخ الموافقة"
+        },
+        {
+          "en": "Scheduled check (daily) to auto-hide pitches with expired subscriptions from public listing and lock their admin panel",
+          "ar": "فحص يومي أوتوماتيك يخفي الملاعب اللي اشتراكها خلص من نتائج البحث ويقفل لوحة الأدمن بتاعتهم"
+        },
+        {
+          "en": "Owner sees a banner in their dashboard when subscription is about to expire",
+          "ar": "المالك بيشوف تنبيه في لوحته لما الاشتراك يكون قرب يخلص"
+        }
+      ],
+      "deliverable_ar": "الملعب يظهر ويقبل حجوزات بس لو المالك مشترك وفعّال، وده بيضمن استمرار دخلك الشهري"
+    },
+    {
+      "sprint_id": 3,
+      "title_en": "Public Pitch Browsing",
+      "title_ar": "تصفح الملاعب للعملاء",
+      "goal_ar": "العميل يقدر يشوف الملاعب المتاحة ويختار",
+      "tasks": [
+        {
+          "en": "Home page listing all pitches with photo, name, price, location",
+          "ar": "صفحة رئيسية بتعرض كل الملاعب بالصورة والاسم والسعر والموقع"
+        },
+        {
+          "en": "Filter/search by city or area",
+          "ar": "بحث وفلترة حسب المدينة أو المنطقة"
+        },
+        {
+          "en": "Pitch details page showing info + available time slots",
+          "ar": "صفحة تفاصيل الملعب بتعرض المعلومات والمواعيد المتاحة"
+        }
+      ],
+      "deliverable_ar": "أي زائر يقدر يتصفح الملاعب ويشوف تفاصيل كل ملعب"
+    },
+    {
+      "sprint_id": 4,
+      "title_en": "Owner Admin Panel — Slot Management",
+      "title_ar": "لوحة تحكم المالك — إدارة المواعيد",
+      "goal_ar": "المالك يضيف أو يشيل المواعيد المتاحة لملعبه",
+      "tasks": [
+        {
+          "en": "Admin dashboard (protected route, only pitch owner)",
+          "ar": "لوحة أدمن محمية، متاحة لصاحب الملعب بس"
+        },
+        {
+          "en": "Calendar/list view to add new available time slots",
+          "ar": "شاشة كالندر أو ليست لإضافة مواعيد جديدة"
+        },
+        {
+          "en": "Ability to delete/disable an existing slot",
+          "ar": "إمكانية حذف أو تعطيل موعد موجود"
+        },
+        {
+          "en": "View list of current bookings for the pitch",
+          "ar": "عرض قائمة الحجوزات الحالية على الملعب"
+        }
+      ],
+      "deliverable_ar": "المالك بيتحكم بالكامل في مواعيد ملعبه من لوحة الأدمن"
+    },
+    {
+      "sprint_id": 5,
+      "title_en": "Customer Booking Flow",
+      "title_ar": "خطوات حجز العميل",
+      "goal_ar": "العميل يختار موعد ويحجزه (قبل الدفع)",
+      "tasks": [
+        {
+          "en": "Customer selects an available slot and enters name/phone",
+          "ar": "العميل بيختار موعد فاضي ويدخل اسمه ورقم تليفونه"
+        },
+        {
+          "en": "Create booking record with status = pending_payment and a temporary hold (e.g. 10 minutes) on the slot",
+          "ar": "إنشاء سجل حجز بحالة (في انتظار الدفع) مع قفل مؤقت على الموعد (مثلاً 10 دقايق)"
+        },
+        {
+          "en": "Slot is hidden from other customers while the hold is active",
+          "ar": "الموعد يختفي عن باقي العملاء طول فترة القفل المؤقت"
+        },
+        {
+          "en": "If the hold expires without a payment screenshot being uploaded, the slot auto-releases and becomes available again",
+          "ar": "لو المهلة خلصت ومترفعش اسكرين دفع، الموعد يرجع متاح تلقائي"
+        }
+      ],
+      "deliverable_ar": "العميل يقدر يحجز موعد ويوصله لمرحلة الدفع"
+    },
+    {
+      "sprint_id": 6,
+      "title_en": "Payment Proof Upload (Vodafone Cash / InstaPay)",
+      "title_ar": "رفع إثبات الدفع (فودافون كاش / انستاباي)",
+      "goal_ar": "العميل يدفع أونلاين ويرفع اسكرين شوت للدفع",
+      "tasks": [
+        {
+          "en": "Show owner's Vodafone Cash number / InstaPay link on payment step",
+          "ar": "عرض رقم فودافون كاش أو لينك انستاباي بتاع المالك في خطوة الدفع"
+        },
+        {
+          "en": "Upload screenshot of payment to Supabase Storage",
+          "ar": "رفع اسكرين شوت الدفع على Supabase Storage"
+        },
+        {
+          "en": "Immediately update booking status to confirmed and permanently remove the slot from availability — no owner action required",
+          "ar": "تحديث حالة الحجز فورًا إلى (مؤكد) وحذف الموعد نهائيًا من قائمة المتاح — من غير أي تدخل من المالك"
+        }
+      ],
+      "deliverable_ar": "العميل يدفع ويرفع الإثبات، والحجز يتأكد فورًا في نفس اللحظة من غير انتظار حد"
+    },
+    {
+      "sprint_id": 7,
+      "title_en": "Telegram Bot Integration",
+      "title_ar": "ربط بوت تيليجرام",
+      "goal_ar": "المالك يستقبل إشعار فوري (إيصال) بأي حجز جديد، مع إمكانية إلغاء الحجز لو فيه مشكلة",
+      "tasks": [
+        {
+          "en": "Backend function sends a receipt message + payment screenshot to owner's Telegram chat right after a booking is auto-confirmed",
+          "ar": "فانكشن في الباك إند بترسل رسالة إيصال + صورة الدفع لتيليجرام المالك فور ما الحجز يتأكد أوتوماتيك"
+        },
+        {
+          "en": "Add a single inline button in the Telegram message: Cancel Booking (for disputing fraudulent/incorrect payments only)",
+          "ar": "إضافة زرار واحد بس داخل رسالة تيليجرام: إلغاء الحجز (للحالات اللي فيها اسكرين مزور أو غلط بس)"
+        },
+        {
+          "en": "Handle Telegram webhook: if owner taps Cancel, update booking status to cancelled and release the slot back to available",
+          "ar": "استقبال رد المالك من تيليجرام (webhook): لو ضغط إلغاء، تتحدث حالة الحجز لملغي والموعد يرجع متاح تاني"
+        },
+        {
+          "en": "Notify the customer if their booking gets cancelled by the owner",
+          "ar": "إبلاغ العميل لو المالك ألغى حجزه"
+        }
+      ],
+      "deliverable_ar": "المالك يستقبل إيصال فوري بأي حجز من موبايله، وليه خيار إلغاء الحجز بس في حالة وجود مشكلة في الدفع"
+    },
+    {
+      "sprint_id": 8,
+      "title_en": "Customer Booking Status Page",
+      "title_ar": "صفحة متابعة حالة الحجز",
+      "goal_ar": "العميل يقدر يتابع حالة حجزه",
+      "tasks": [
+        {
+          "en": "Status lookup page by phone number or booking code",
+          "ar": "صفحة بحث عن حالة الحجز برقم التليفون أو كود الحجز"
+        },
+        {
+          "en": "Show status: pending / confirmed / rejected",
+          "ar": "عرض الحالة: في الانتظار / تم التأكيد / مرفوض"
+        }
+      ],
+      "deliverable_ar": "العميل يقدر يعرف حالة حجزه من غير ما يكلم حد"
+    },
+    {
+      "sprint_id": 9,
+      "title_en": "Cancel Booking & Refund Requests",
+      "title_ar": "إلغاء الحجز وطلب الاسترداد",
+      "goal_ar": "العميل يقدر يلغي حجزه من الموقع ويوصل للمالك طلب استرداد واضح، وكل مالك بيحدد سياسة الإلغاء بتاعة ملعبه بنفسه",
+      "tasks": [
+        {
+          "en": "Add cancellation policy fields to pitch settings: cutoff hours before match, refund % before cutoff (default 100%), refund % after cutoff (owner-defined)",
+          "ar": "إضافة إعدادات سياسة الإلغاء لكل ملعب: عدد ساعات المهلة قبل الميعاد، نسبة الاسترداد قبل المهلة (افتراضيًا 100%)، ونسبة الاسترداد بعد المهلة (المالك بيحددها بنفسه)"
+        },
+        {
+          "en": "Display the pitch's cancellation policy clearly to the customer before they confirm any booking",
+          "ar": "عرض سياسة الإلغاء بوضوح للعميل قبل ما يأكد أي حجز"
+        },
+        {
+          "en": "Add a \"Cancel Booking\" button on the customer's booking status/lookup page for confirmed bookings",
+          "ar": "إضافة زرار (إلغاء الحجز) في صفحة متابعة الحجز الخاصة بالعميل"
+        },
+        {
+          "en": "On cancel, calculate hours remaining until match time and show the applicable refund percentage per the pitch's policy before final confirmation",
+          "ar": "عند الإلغاء، حساب عدد الساعات المتبقية على الميعاد وعرض نسبة الاسترداد المستحقة حسب سياسة الملعب قبل التأكيد النهائي"
+        },
+        {
+          "en": "Customer confirms cancellation and enters the wallet number they paid from, with the original booking amount shown as reference",
+          "ar": "العميل بيأكد الإلغاء ويدخل رقم المحفظة اللي حول منها، مع عرض مبلغ الحجز الأصلي كمرجع"
+        },
+        {
+          "en": "Set booking status to cancelled and immediately release the slot back to public availability",
+          "ar": "تحديث حالة الحجز إلى (ملغي) وفتح الموعد للعامة فورًا"
+        },
+        {
+          "en": "Telegram bot sends the owner a cancellation message: customer name/phone, match date/time, refund amount owed, and the wallet number to refund to",
+          "ar": "بوت تيليجرام بيبعت للمالك رسالة إلغاء: اسم ورقم العميل، تاريخ وميعاد الماتش، مبلغ الاسترداد المستحق، ورقم المحفظة اللي هيحول عليها"
+        },
+        {
+          "en": "Owner admin panel: list of pending refund requests with a \"Mark as Refunded\" button that timestamps the completion",
+          "ar": "لوحة المالك: قايمة بطلبات الاسترداد المعلقة، مع زرار (تم الاسترداد) بيسجل تاريخ ووقت التنفيذ"
+        },
+        {
+          "en": "Cancellation/refund history log visible to the owner for record-keeping and dispute resolution",
+          "ar": "سجل موثق لكل حالات الإلغاء والاسترداد يقدر المالك يرجعله وقت ما يحصل خلاف"
+        }
+      ],
+      "deliverable_ar": "نظام إلغاء واسترداد شفاف — كل مالك بيحدد سياسته بنفسه، الموعد بيتحرر فورًا، وفيه سجل موثق يحمي حق الطرفين"
+    },
+    {
+      "sprint_id": 10,
+      "title_en": "Recurring Weekly Bookings (Deposit System)",
+      "title_ar": "الحجز الأسبوعي الثابت (نظام العربون)",
+      "goal_ar": "العميل يثبت ميعاد أسبوعي بعربون، ويأكد حضوره كل أسبوع برقم تليفونه قبل الميعاد بمهلة محددة",
+      "tasks": [
+        {
+          "en": "Add recurring_bookings table: phone, name, pitch_id, day_of_week, time_slot, deposit_amount, status (active/cancelled)",
+          "ar": "إضافة جدول (الحجوزات الأسبوعية): رقم التليفون، الاسم، الملعب، يوم الأسبوع، الميعاد، مبلغ العربون، الحالة"
+        },
+        {
+          "en": "Customer flow: mark a slot as recurring, pay a deposit auto-calculated as 50% of the hourly price, upload screenshot",
+          "ar": "العميل بيختار الموعد كـ(حجز أسبوعي ثابت)، ويدفع عربون بيتحسب أوتوماتيك (نص سعر الساعة)، ويرفع الاسكرين"
+        },
+        {
+          "en": "On deposit confirmation, permanently remove that day/time from the public weekly availability template",
+          "ar": "بعد تأكيد العربون، يوم/ميعاد ده يتشال نهائيًا من قائمة المواعيد المتاحة للعامة كل أسبوع"
+        },
+        {
+          "en": "Scheduled job auto-generates the upcoming week's occurrence record ahead of time, status = awaiting_confirmation",
+          "ar": "مهمة مجدولة بتنشئ سجل (الأسبوع الجاي) مقدمًا بحالة (في انتظار التأكيد)"
+        },
+        {
+          "en": "\"My Bookings\" lookup page by phone number, showing the recurring plan and the current week's occurrence status",
+          "ar": "صفحة (حجوزاتي) بحث برقم التليفون، بتعرض الخطة الأسبوعية وحالة موعد الأسبوع الحالي"
+        },
+        {
+          "en": "Customer confirms attendance and pays the full hourly price (screenshot upload) for that week's occurrence, before a configurable cutoff (default: 4 days ahead)",
+          "ar": "العميل بيأكد حضوره ويدفع سعر الساعة كامل (برفع اسكرين) لموعد الأسبوع ده، قبل مهلة قابلة للتعديل (افتراضيًا: 4 أيام)"
+        },
+        {
+          "en": "Daily scheduled check: occurrences past the cutoff with no confirmation auto-release that week's slot to public booking, while the recurring plan itself stays active for future weeks",
+          "ar": "فحص يومي مجدول: أي موعد فات مهلة التأكيد وملماكدش، يتفتح للعامة للأسبوع ده بس، والخطة الأسبوعية تفضل شغالة للأسابيع الجايه"
+        },
+        {
+          "en": "Telegram bot sends a separate receipt for the initial deposit, and a weekly receipt each time an occurrence is confirmed and paid",
+          "ar": "بوت تيليجرام بيبعت إيصال منفصل للعربون الأولي، وإيصال أسبوعي كل مرة العميل بيأكد ويدفع"
+        },
+        {
+          "en": "Owner admin panel: view recurring customers per pitch, with option to cancel a recurring plan entirely (frees the day/time back to normal availability)",
+          "ar": "لوحة المالك: عرض العملاء الأسبوعيين الثابتين لكل ملعب، مع إمكانية إلغاء الخطة الأسبوعية بالكامل (يرجع اليوم/الميعاد متاح عادي)"
+        }
+      ],
+      "deliverable_ar": "نظام حجز أسبوعي ثابت شغال بالكامل — العميل بيتحكم فيه برقم تليفونه، ولو نسي يأكد قبل المهلة، الأسبوع ده بس يتفتح للعامة"
+    },
+    {
+      "sprint_id": 11,
+      "title_en": "Testing & Deployment",
+      "title_ar": "الاختبار والنشر",
+      "goal_ar": "تجربة الموقع بالكامل ونشره أونلاين",
+      "tasks": [
+        {
+          "en": "End-to-end test: browse → book → pay → auto-confirm → owner receipt via Telegram → status updates",
+          "ar": "اختبار كامل: تصفح → حجز → دفع → تأكيد أوتوماتيك → إيصال المالك من تيليجرام → تحديث الحالة"
+        },
+        {
+          "en": "Test recurring booking flow: deposit payment, weekly confirmation before cutoff, and auto-release when a week is missed",
+          "ar": "اختبار الحجز الأسبوعي الثابت: دفع العربون، التأكيد الأسبوعي قبل المهلة، وفتح الموعد تلقائي لو العميل نسي"
+        },
+        {
+          "en": "Test every screen on real mobile viewport sizes (small/large phones) — booking flow, admin panel, and status pages must all be fully usable on mobile",
+          "ar": "اختبار كل شاشة على مقاسات موبايل حقيقية (تليفونات صغيرة وكبيرة) — خطوات الحجز، لوحة الأدمن، وصفحات المتابعة لازم تشتغل تمام على الموبايل"
+        },
+        {
+          "en": "Handle edge cases: double booking, expired pending slots, failed uploads",
+          "ar": "معالجة الحالات الحرجة: حجز مزدوج، مواعيد منتهية الصلاحية، فشل رفع الصور"
+        },
+        {
+          "en": "Deploy frontend to Vercel, verify Supabase connection",
+          "ar": "نشر الفرونت إند على Vercel والتأكد من الاتصال بـ Supabase"
+        },
+        {
+          "en": "Final review with real test bookings",
+          "ar": "مراجعة نهائية بحجوزات تجريبية حقيقية"
+        }
+      ],
+      "deliverable_ar": "الموقع شغال أونلاين بالكامل وجاهز للاستخدام الحقيقي"
+    },
+    {
+      "sprint_id": 12,
+      "title_en": "Stretch Goals (Optional)",
+      "title_ar": "تحسينات إضافية (اختياري)",
+      "goal_ar": "تحسينات بعد ما الموقع يشتغل تمام",
+      "tasks": [
+        {
+          "en": "Super-admin dashboard to manage all owners/pitches and review subscription payments in one place (instead of just via Telegram)",
+          "ar": "لوحة سوبر أدمن لإدارة كل المالكين والملاعب ومراجعة اشتراكاتهم في مكان واحد بدل ما تبقى كلها عن طريق تيليجرام بس"
+        },
+        {
+          "en": "Ratings/reviews for pitches",
+          "ar": "تقييمات ومراجعات للملاعب"
+        },
+        {
+          "en": "Automatic reminder message before match time via Telegram/WhatsApp",
+          "ar": "رسالة تذكير أوتوماتيك قبل ميعاد الماتش"
+        }
+      ],
+      "deliverable_ar": "مميزات إضافية تحسّن تجربة الاستخدام"
+    }
+  ]
+}

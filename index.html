@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منصة حجز ملاعب الكرة الخماسي في مدينة السادات | Futsal Booking</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="css/style.css">
+
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0f172a">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="main-header">
+            <div class="logo">
+                <i data-lucide="goal"></i>
+                <a href="index.html" style="color: inherit; text-decoration: none;"><h1>ملاعب مدينة السادات </h1></a>
+            </div>
+            <nav class="nav-links">
+                <a href="index.html" class="nav-link active">الرئيسية</a>
+                <a href="my-bookings.html" class="nav-link">حجوزاتي</a>
+            </nav>
+            <div class="auth-buttons">
+                <button class="btn btn-outline" id="loginBtn">دخول أصحاب الملاعب</button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main id="app-content">
+            <!-- Hero Section -->
+            <section class="hero-section">
+                <!-- Club Logos Backgrounds -->
+                <img src="https://upload.wikimedia.org/wikipedia/ar/8/8c/Al_Ahly_SC_logo.png" alt="Ahly" class="club-bg-logo logo-ahly">
+                <img src="./Zamalek_SC_logo.svg.webp" alt="Zamalek" class="club-bg-logo logo-zamalek">
+                <img src="https://upload.wikimedia.org/wikipedia/en/5/56/Real_Madrid_CF.svg" alt="Real Madrid" class="club-bg-logo logo-madrid">
+                <img src="https://upload.wikimedia.org/wikipedia/en/4/47/FC_Barcelona_%28crest%29.svg" alt="Barcelona" class="club-bg-logo logo-barca">
+
+                <div class="hero-content">
+                    <h2>احجز ملعبك في ثواني! ⚽</h2>
+                    <p>أسهل وأسرع طريقة عشان تحجز ملاعب الخماسي أونلاين. اختار ميعادك، ادفع، وانزل العب يا نجم.</p>
+                    
+                    <!-- Search Bar -->
+                    <div class="search-bar">
+                        <i data-lucide="map-pin" class="search-icon" style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+                        <select id="areaFilter" style="width: 100%; padding: 15px 15px 15px 40px; border-radius: 12px; border: 1px solid var(--border-color); background-color: var(--bg-card); color: var(--text-light); font-family: inherit; font-size: 1rem; appearance: none; cursor: pointer;">
+                            <option value="">كل المناطق (السادات)</option>
+                        </select>
+                        <i data-lucide="chevron-down" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none;"></i>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Pitches Section -->
+            <section class="pitches-section">
+                <h2 class="section-title" style="margin-bottom: 25px; font-size: 1.8rem;">الملاعب المتاحة دلوقتي</h2>
+                
+                <div id="loadingIndicator" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                    <div class="football-loader">⚽</div>
+                    <p style="margin-top: 15px;">بندورلك على الملاعب... ثواني يا كابتن</p>
+                </div>
+                
+                <div id="publicPitchesList" class="grid-2" style="display: none;">
+                    <!-- Pitches will be loaded here dynamically via JS -->
+                </div>
+                
+                <div id="noResults" class="empty-state" style="display: none; margin-top: 20px;">
+                    <i data-lucide="search-x"></i>
+                    <h3>ملقناش ملاعب للمنطقة دي!</h3>
+                    <p>جرب تدور في منطقة تانية أو غير كلمات البحث يا بطل.</p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="js/supabase.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/app.js"></script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js');
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,521 @@
+/* Premium Vanilla CSS Design System */
+:root {
+    --primary-color: #22c55e; /* Turf Green */
+    --primary-hover: #16a34a;
+    --bg-dark: #0f172a;
+    --bg-darker: #020617;
+    --bg-card: #1e293b;
+    --text-light: #f8fafc;
+    --text-muted: #94a3b8;
+    --border-color: #334155;
+    --glass-bg: rgba(30, 41, 59, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    
+    --font-family: 'Cairo', sans-serif;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--font-family);
+    background-color: var(--bg-dark);
+    color: var(--text-light);
+    line-height: 1.6;
+    min-height: 100vh;
+}
+
+.app-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+/* Header */
+.main-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--primary-color);
+}
+
+.logo h1 {
+    font-size: 1.5rem;
+    font-weight: 800;
+}
+
+.nav-links {
+    display: flex;
+    gap: 20px;
+}
+
+.nav-link {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.3s;
+}
+
+.nav-link:hover, .nav-link.active {
+    color: var(--primary-color);
+}
+
+/* Buttons */
+.btn {
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-family: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    text-decoration: none;
+}
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    color: var(--bg-darker);
+}
+
+.btn-primary:hover:not(:disabled) {
+    background-color: var(--primary-hover);
+    transform: translateY(-2px);
+}
+
+.btn-outline {
+    background-color: transparent;
+    border: 1px solid var(--primary-color);
+    color: var(--primary-color);
+}
+
+.btn-outline:hover:not(:disabled) {
+    background-color: var(--primary-color);
+    color: var(--bg-darker);
+}
+
+.btn-full {
+    width: 100%;
+    padding: 12px;
+}
+
+/* Hero Section */
+.hero-section {
+    padding: 80px 0;
+    text-align: center;
+    background: radial-gradient(circle at center, var(--glass-bg), transparent);
+    border-radius: 20px;
+    margin-top: 40px;
+    border: 1px solid var(--glass-border);
+}
+
+.hero-content h2 {
+    font-size: 3rem;
+    font-weight: 800;
+    margin-bottom: 20px;
+    background: linear-gradient(135deg, #10b981, #3b82f6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.hero-content p {
+    font-size: 1.2rem;
+    color: var(--text-muted);
+    margin-bottom: 30px;
+    max-width: 600px;
+    margin-inline: auto;
+}
+
+/* Search Bar */
+.search-bar {
+    position: relative;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+/* Auth Cards */
+.auth-page {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: calc(100vh - 100px);
+}
+
+.auth-card {
+    background-color: var(--bg-card);
+    padding: 40px;
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+    width: 100%;
+    max-width: 450px;
+    text-align: center;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+}
+
+.auth-card h2 {
+    margin-bottom: 10px;
+    color: var(--primary-color);
+}
+.auth-card p {
+    color: var(--text-muted);
+    margin-bottom: 30px;
+}
+
+/* Forms */
+.form-group {
+    margin-bottom: 20px;
+    text-align: right;
+}
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+.form-group input, .form-group textarea, .form-group select {
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-dark);
+    color: var(--text-light);
+    font-family: inherit;
+    font-size: 1rem;
+    transition: border-color 0.3s;
+}
+.form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+.error-message {
+    color: #ef4444;
+    margin-bottom: 15px;
+    font-size: 0.9rem;
+}
+.success-message {
+    color: var(--primary-color);
+    margin-bottom: 15px;
+    font-size: 0.9rem;
+}
+.auth-links {
+    margin-top: 25px;
+    font-size: 0.95rem;
+}
+.auth-links a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+.auth-links a:hover {
+    text-decoration: underline;
+}
+
+/* Dashboard & Pitches */
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 40px;
+    margin-bottom: 30px;
+}
+
+.empty-state {
+    background-color: var(--bg-card);
+    padding: 50px;
+    border-radius: 16px;
+    text-align: center;
+    border: 1px dashed var(--border-color);
+}
+.empty-state i {
+    width: 64px;
+    height: 64px;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+}
+.empty-state h3 {
+    margin-bottom: 10px;
+}
+.empty-state p {
+    color: var(--text-muted);
+    margin-bottom: 25px;
+}
+
+/* Forms container for Pitch Creation */
+.form-container {
+    background-color: var(--bg-card);
+    padding: 40px;
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+    max-width: 800px;
+    margin: 40px auto;
+}
+.form-container h2 {
+    color: var(--primary-color);
+    margin-bottom: 25px;
+    text-align: center;
+}
+.grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+    animation: fadeIn 0.5s ease forwards;
+}
+
+/* --- Sprint 3: Public Pitches & Details --- */
+
+.pitches-section {
+    padding: 60px 0;
+}
+
+/* Pitch Card */
+.pitch-card {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    display: flex;
+    flex-direction: column;
+}
+.pitch-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 30px rgba(0,0,0,0.3);
+    border-color: var(--primary-color);
+}
+.pitch-card-img {
+    height: 200px;
+    background-size: cover;
+    background-position: center;
+    border-bottom: 1px solid var(--border-color);
+}
+.pitch-card-content {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+.pitch-card-content h3 {
+    font-size: 1.4rem;
+    margin-bottom: 10px;
+}
+.pitch-location {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.pitch-card-footer {
+    margin-top: auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 15px;
+    border-top: 1px solid var(--border-color);
+}
+.pitch-price strong {
+    color: var(--primary-color);
+    font-size: 1.2rem;
+}
+
+/* Pitch Details */
+.pitch-details-cover {
+    height: 400px;
+    width: 100%;
+    background-size: cover;
+    background-position: center;
+    border-radius: 20px;
+    margin: 30px 0;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    border: 1px solid var(--border-color);
+}
+.pitch-details-body {
+    display: grid;
+    grid-template-columns: 1fr 350px;
+    gap: 40px;
+    margin-bottom: 60px;
+}
+.info-badges {
+    display: flex;
+    gap: 15px;
+    margin-top: 20px;
+}
+.badge {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    padding: 10px 20px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+}
+.badge i {
+    color: var(--primary-color);
+}
+
+/* Slots Grid */
+.slots-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 15px;
+}
+.slot-card {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 15px;
+    text-align: center;
+    transition: all 0.2s ease;
+}
+.slot-card:hover {
+    border-color: var(--primary-color);
+    background-color: rgba(16, 185, 129, 0.05);
+}
+.slot-day {
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: 5px;
+}
+.slot-time {
+    font-size: 0.9rem;
+    color: var(--text-light);
+}
+
+/* Mobile Responsiveness Updates */
+@media (max-width: 768px) {
+    .grid-2 {
+        grid-template-columns: 1fr;
+    }
+    
+    .pitch-details-body {
+        grid-template-columns: 1fr;
+    }
+    
+    .pitch-details-cover {
+        height: 250px;
+        border-radius: 12px;
+    }
+    
+    .main-header {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .hero-content h2 {
+        font-size: 2rem;
+    }
+}
+
+/* Modals */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(5px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+.modal-content {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    width: 90%;
+    max-width: 500px;
+    padding: 30px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+}
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 15px;
+}
+.modal-header h3 {
+    color: var(--primary-color);
+    margin: 0;
+}
+.close-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color 0.2s;
+}
+.close-btn:hover {
+    color: #ef4444;
+}
+
+/* Football Theme Extras */
+.football-loader {
+    display: inline-block;
+    font-size: 2.5rem;
+    animation: spin 1.5s linear infinite, bounce 1s ease-in-out infinite alternate;
+}
+
+@keyframes bounce {
+    0% { transform: translateY(0) rotate(0deg); }
+    100% { transform: translateY(-15px) rotate(360deg); }
+}
+
+.hero-section {
+    position: relative;
+    overflow: hidden;
+}
+
+.club-bg-logo {
+    position: absolute;
+    opacity: 0.15;
+    z-index: 0;
+    pointer-events: none;
+    filter: drop-shadow(0 15px 15px rgba(0,0,0,0.5)) grayscale(50%);
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-style: preserve-3d;
+}
+
+.hero-section:hover .club-bg-logo {
+    opacity: 0.4;
+    filter: drop-shadow(0 25px 25px rgba(0,0,0,0.7)) grayscale(0%);
+}
+
+.logo-ahly { top: -20px; right: -20px; width: 160px; transform: perspective(600px) rotateY(-25deg) rotateX(15deg) rotateZ(15deg) translateZ(20px); }
+.logo-zamalek { bottom: -20px; left: -20px; width: 160px; transform: perspective(600px) rotateY(25deg) rotateX(-15deg) rotateZ(-15deg) translateZ(20px); }
+.logo-madrid { top: 35%; right: 8%; width: 130px; transform: perspective(600px) rotateY(-35deg) rotateX(10deg) rotateZ(5deg) translateZ(40px); }
+.logo-barca { top: 25%; left: 10%; width: 120px; transform: perspective(600px) rotateY(35deg) rotateX(-10deg) rotateZ(-10deg) translateZ(40px); }
+
+.hero-content {
+    position: relative;
+    z-index: 1;
+}

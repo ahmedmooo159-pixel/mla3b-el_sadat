@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة المنصة الرئيسية | ملاعب مصر</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .admin-nav {
+            display: flex; gap: 15px; margin-bottom: 30px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; overflow-x: auto;
+        }
+        .admin-nav button {
+            background: transparent; border: none; color: var(--text-muted); font-family: inherit; font-size: 1.1rem; font-weight: 600; cursor: pointer; padding: 5px 10px; border-radius: 8px; white-space: nowrap;
+        }
+        .admin-nav button.active {
+            color: var(--primary-color); background: rgba(34, 197, 94, 0.1);
+        }
+        .section-panel { display: none; }
+        .section-panel.active { display: block; }
+        
+        .admin-card {
+            background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; margin-bottom: 15px;
+        }
+    </style>
+
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0f172a">
+</head>
+<body>
+    <div class="app-container">
+        <header class="main-header">
+            <div class="logo">
+                <i data-lucide="shield-check" style="color: var(--primary-color);"></i>
+                <a href="index.html" style="color: inherit; text-decoration: none;"><h1>لوحة الإدارة</h1></a>
+            </div>
+            <nav class="nav-links">
+                <button class="btn btn-outline" onclick="handleLogout()">تسجيل الخروج</button>
+            </nav>
+        </header>
+
+        <main id="app-content">
+            <div id="loadingIndicator" style="text-align: center; padding: 60px;">
+                <div class="football-loader">⚽</div>
+                <p style="margin-top: 15px;">بنتأكد من الصلاحيات...</p>
+            </div>
+            
+            <div id="adminContainer" style="display: none;" class="animate-fade-in">
+                <div class="dashboard-header">
+                    <div>
+                        <h2 style="color: var(--primary-color);">إدارة المنصة (السوبر أدمن) 👑</h2>
+                        <p style="color: var(--text-muted);">تحكم في كل إعدادات المنصة واشتراكات الملاعب من هنا.</p>
+                    </div>
+                </div>
+                
+                <div class="admin-nav">
+                    <button class="active" onclick="switchTab('subscriptions')"><i data-lucide="credit-card" style="width:18px; height:18px; vertical-align:middle;"></i> الاشتراكات المعلقة</button>
+                    <button onclick="switchTab('pitches')"><i data-lucide="map" style="width:18px; height:18px; vertical-align:middle;"></i> كل الملاعب</button>
+                    <button onclick="switchTab('settings')"><i data-lucide="settings" style="width:18px; height:18px; vertical-align:middle;"></i> إعدادات المنصة</button>
+                </div>
+                
+                <!-- Subscriptions Tab -->
+                <div id="subscriptions" class="section-panel active">
+                    <h3 style="margin-bottom: 20px;">الاشتراكات اللي مستنية تفعيل</h3>
+                    <div id="pendingSubscriptionsList"></div>
+                </div>
+                
+                <!-- All Pitches Tab -->
+                <div id="pitches" class="section-panel">
+                    <h3 style="margin-bottom: 20px;">كل الملاعب المتسجلة عندنا</h3>
+                    <div class="form-group" style="max-width: 300px; margin-bottom: 20px;">
+                        <input type="text" id="pitchSearch" placeholder="دور باسم الملعب أو صاحبه..." oninput="filterPitches(this.value)">
+                    </div>
+                    <div id="allPitchesList"></div>
+                </div>
+                
+                <!-- Platform Settings Tab -->
+                <div id="settings" class="section-panel">
+                    <div class="admin-card">
+                        <h3 style="margin-bottom: 20px;">إعدادات الدفع والاشتراكات</h3>
+                        <form id="settingsForm">
+                            <div class="form-group">
+                                <label>رقم فودافون كاش بتاع المنصة</label>
+                                <input type="text" id="settingVCash" required>
+                            </div>
+                            <div class="form-group">
+                                <label>رابط أو حساب إنستاباي بتاع المنصة</label>
+                                <input type="text" id="settingInstapay" required>
+                            </div>
+                            <div class="form-group">
+                                <label>قيمة الاشتراك الشهري للملاعب (بالجنيه)</label>
+                                <input type="number" id="settingMonthlyFee" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary" id="saveSettingsBtn">احفظ الإعدادات</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="accessDeniedMsg" class="empty-state" style="display: none; padding: 40px;">
+                <i data-lucide="shield-alert" style="color: #ef4444; width: 64px; height: 64px;"></i>
+                <h3 style="color: #ef4444;">عفواً، ملكش صلاحية تخش هنا! 🚫</h3>
+                <p>الصفحة دي للمديرين بس يا كابتن.</p>
+                <a href="dashboard.html" class="btn btn-primary" style="margin-top: 20px;">ارجع للوحة صاحب الملعب</a>
+            </div>
+            
+            <!-- Image Modal for Receipts -->
+            <div id="receiptModal" class="modal-overlay" style="display: none; z-index: 9999;">
+                <div class="modal-content animate-fade-in" style="background: transparent; box-shadow: none; max-width: 90vw; text-align: center;">
+                    <button class="close-btn" onclick="closeReceiptModal()" style="background: white; border-radius: 50%; margin-bottom: 10px;"><i data-lucide="x"></i></button>
+                    <img id="receiptImagePreview" src="" style="max-width: 100%; max-height: 80vh; border-radius: 12px;">
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script src="js/supabase.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/admin-dashboard.js"></script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js');
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة التحكم | ملاعب مصر</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="css/style.css">
+
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0f172a">
+</head>
+<body>
+    <div class="app-container">
+        <header class="main-header">
+            <div class="logo">
+                <i data-lucide="goal"></i>
+                <a href="index.html" style="color: inherit; text-decoration: none;"><h1>ملاعب مصر</h1></a>
+            </div>
+            <nav class="nav-links">
+                <button class="btn btn-outline" onclick="handleLogout()">تسجيل الخروج</button>
+            </nav>
+        </header>
+
+        <main id="app-content">
+            <div class="dashboard-header animate-fade-in">
+                <div>
+                    <h2>أهلاً بيك يا <span id="ownerNameDisplay">صاحب الملعب</span> 👋</h2>
+                    <p style="color: var(--text-muted);">دي الملاعب بتاعتك وحالة اشتراكاتها، ظبط دنيتك من هنا.</p>
+                </div>
+                <a href="create-pitch.html" class="btn btn-primary">
+                    <i data-lucide="plus-circle"></i> ضيف ملعب جديد
+                </a>
+            </div>
+            
+            <div class="settings-card animate-fade-in" style="flex-wrap: wrap;">
+                <div>
+                    <h3 style="color: #0088cc; display: flex; align-items: center; gap: 8px;">
+                        <i data-lucide="send"></i> إعدادات بوت تيليجرام
+                    </h3>
+                    <p style="font-size: 0.9rem; color: var(--text-muted);">استقبل إشعارات فورية بكل حجز جديد على حسابك في تيليجرام عشان متفوتش حاجة.</p>
+                </div>
+                <div style="display: flex; gap: 10px; flex-grow: 1; max-width: 400px;">
+                    <input type="text" id="telegramChatId" placeholder="الـ Chat ID بتاعك" style="flex-grow: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-dark); color: white;">
+                    <button id="saveTelegramBtn" class="btn btn-outline" style="white-space: nowrap;">احفظ</button>
+                </div>
+            </div>
+
+            <div id="pitchesList" class="grid-2 animate-fade-in">
+                <!-- Pitches will be loaded here -->
+            </div>
+            
+            <div class="empty-state animate-fade-in" id="emptyState" style="display: none; margin-top: 20px;">
+                <i data-lucide="map-pin"></i>
+                <h3>معندكش ملاعب متسجلة لسه!</h3>
+                <p>ضيف أول ملعب ليك وابدأ استقبل الحجوزات دلوقتي.</p>
+                <a href="create-pitch.html" class="btn btn-primary">إضافة ملعب</a>
+            </div>
+
+            <!-- Refund Requests Section -->
+            <div id="refundsSection" style="margin-top: 40px; display: none;" class="animate-fade-in">
+                <h3 style="margin-bottom: 20px; display: flex; align-items: center; gap: 8px; font-size: 1.4rem;">
+                    <i data-lucide="refresh-cw" style="color: #ef4444;"></i> طلبات استرجاع الفلوس 💸
+                </h3>
+                <div id="refundsList" style="display: flex; flex-direction: column; gap: 15px;">
+                    <!-- Refunds will be loaded here -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/supabase.js"></script>
+    <script src="js/auth.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            lucide.createIcons();
+            
+            supabase.auth.onAuthStateChange(async (event, session) => {
+                if (session?.user) {
+                    loadOwnerPitches(session.user.id);
+                }
+            });
+            
+            if (currentUser) {
+                // If admin, redirect to admin dashboard (basic check, server enforces RLS)
+                checkAdminRole(currentUser.id).then(isAdmin => {
+                    if (isAdmin) {
+                        window.location.href = 'admin-dashboard.html';
+                    } else {
+                        loadOwnerPitches(currentUser.id);
+                        loadRefundRequests(currentUser.id);
+                    }
+                });
+            }
+        });
+
+        async function checkAdminRole(userId) {
+            try {
+                const { data } = await supabase.from('owners').select('role').eq('id', userId).single();
+                return data?.role === 'admin';
+            } catch { return false; }
+        }
+
+        async function loadOwnerPitches(ownerId) {
+            try {
+                // Fetch owner details for Telegram ID
+                const { data: ownerData } = await supabase
+                    .from('owners')
+                    .select('telegram_chat_id')
+                    .eq('id', ownerId)
+                    .single();
+                    
+                if (ownerData && ownerData.telegram_chat_id) {
+                    document.getElementById('telegramChatId').value = ownerData.telegram_chat_id;
+                }
+                
+                // Fetch pitches
+                const { data: pitches, error } = await supabase
+                    .from('pitches')
+                    .select('*')
+                    .eq('owner_id', ownerId)
+                    .order('created_at', { ascending: false });
+                
+                const listDiv = document.getElementById('pitchesList');
+                const emptyState = document.getElementById('emptyState');
+                
+                if (error) {
+                    listDiv.innerHTML = `<p class="error-message">في مشكلة في تحميل الملاعب: ${error.message}</p>`;
+                    return;
+                }
+                
+                if (!pitches || pitches.length === 0) {
+                    emptyState.style.display = 'block';
+                    listDiv.style.display = 'none';
+                } else {
+                    emptyState.style.display = 'none';
+                    listDiv.style.display = 'grid'; // because it uses .grid-2
+                    listDiv.innerHTML = '';
+                    
+                    pitches.forEach(pitch => {
+                        let statusText = '';
+                        let statusColor = '';
+                        let actionBtn = '';
+                        
+                        if (pitch.subscription_status === 'active') {
+                            statusText = 'اشتراك نشط';
+                            statusColor = 'var(--primary-color)';
+                            actionBtn = `<button class="btn btn-outline" style="width: 100%;" onclick="window.location.href='manage-slots.html?id=${pitch.id}'"><i data-lucide="calendar"></i> ظبط المواعيد</button>`;
+                        } else if (pitch.subscription_status === 'pending') {
+                            statusText = 'بنراجع الدفع';
+                            statusColor = '#f59e0b'; // Amber
+                            actionBtn = `<button class="btn btn-outline" disabled style="width: 100%;">طلبك بيتراجع...</button>`;
+                        } else {
+                            statusText = 'اشتراك خلصان (مخفي)';
+                            statusColor = '#ef4444'; // Red
+                            actionBtn = `<a href="subscription.html?id=${pitch.id}" class="btn btn-primary" style="width: 100%; background-color: #ef4444; color: white;"><i data-lucide="credit-card"></i> ادفع الاشتراك الشهري</a>`;
+                        }
+
+                        const expiryDate = pitch.subscription_expires_at 
+                            ? new Date(pitch.subscription_expires_at).toLocaleDateString('ar-EG') 
+                            : 'مش محدد';
+
+                        const el = document.createElement('div');
+                        el.style.backgroundColor = 'var(--bg-card)';
+                        el.style.padding = '25px';
+                        el.style.borderRadius = '16px';
+                        el.style.border = '1px solid var(--border-color)';
+                        el.style.display = 'flex';
+                        el.style.flexDirection = 'column';
+                        el.style.justifyContent = 'space-between';
+                        
+                        el.innerHTML = `
+                            <div>
+                                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
+                                    <h3>${pitch.name}</h3>
+                                    <span style="background: ${statusColor}; color: var(--bg-darker); padding: 4px 10px; border-radius: 6px; font-size: 0.85rem; font-weight: bold; text-align: center;">
+                                        ${statusText}
+                                    </span>
+                                </div>
+                                <p style="color: var(--text-muted); margin-bottom: 8px; display: flex; align-items: center; gap: 5px;">
+                                    <i data-lucide="map-pin" style="width: 16px; height: 16px;"></i> ${pitch.location}
+                                </p>
+                                <p style="margin-bottom: 8px;"><strong>سعر الساعة:</strong> ${pitch.price_per_hour} جنيه</p>
+                                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;">
+                                    <i data-lucide="calendar-clock" style="width: 14px; height: 14px; vertical-align: middle;"></i> الاشتراك يخلص: ${expiryDate}
+                                </p>
+                            </div>
+                            <div style="margin-top: auto;">
+                                ${actionBtn}
+                            </div>
+                        `;
+                        listDiv.appendChild(el);
+                    });
+                    lucide.createIcons();
+                }
+            } catch (err) {
+                console.error("Error loading data:", err);
+            }
+        }
+        
+        document.getElementById('saveTelegramBtn').addEventListener('click', async () => {
+            const chatId = document.getElementById('telegramChatId').value.trim();
+            const btn = document.getElementById('saveTelegramBtn');
+            btn.textContent = '...';
+            
+            try {
+                const { error } = await supabase
+                    .from('owners')
+                    .update({ telegram_chat_id: chatId })
+                    .eq('id', currentUser.id);
+                    
+                if (error) throw error;
+                btn.textContent = 'اتحفظ!';
+                btn.style.borderColor = '#10b981';
+                btn.style.color = '#10b981';
+            } catch (err) {
+                alert('حصلت مشكلة وإحنا بنحفظ');
+            }
+            
+            setTimeout(() => {
+                btn.textContent = 'احفظ';
+                btn.style.borderColor = '';
+                btn.style.color = '';
+            }, 2000);
+        });
+
+        async function loadRefundRequests(ownerId) {
+            try {
+                // Get all pitches for this owner
+                const { data: pitches } = await supabase.from('pitches').select('id, name').eq('owner_id', ownerId);
+                if (!pitches || pitches.length === 0) return;
+                
+                const pitchIds = pitches.map(p => p.id);
+                
+                // Get pending refund requests for these pitches
+                const { data: refunds, error } = await supabase
+                    .from('refund_requests')
+                    .select(`
+                        id, refund_amount, wallet_number, status, created_at,
+                        bookings!inner (
+                            customer_name, customer_phone, booking_date,
+                            slots!inner ( pitch_id )
+                        )
+                    `)
+                    .eq('status', 'pending')
+                    .in('bookings.slots.pitch_id', pitchIds)
+                    .order('created_at', { ascending: false });
+                    
+                if (error) throw error;
+                
+                const section = document.getElementById('refundsSection');
+                const list = document.getElementById('refundsList');
+                
+                if (refunds && refunds.length > 0) {
+                    section.style.display = 'block';
+                    list.innerHTML = '';
+                    
+                    refunds.forEach(req => {
+                        const b = req.bookings;
+                        const pitchName = pitches.find(p => p.id === b.slots.pitch_id)?.name || 'ملعب';
+                        const d = new Date(req.created_at).toLocaleDateString('ar-EG');
+                        
+                        const el = document.createElement('div');
+                        el.style.cssText = 'background: var(--bg-card); border: 1px solid #ef4444; border-radius: 12px; padding: 20px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 15px; align-items: center;';
+                        el.innerHTML = `
+                            <div>
+                                <h4 style="color: #ef4444; margin-bottom: 5px;">${pitchName} - طلب استرجاع</h4>
+                                <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 8px;">العميل: ${b.customer_name} (${b.customer_phone})</p>
+                                <p style="font-size: 1.05rem; font-weight: bold;">
+                                    المبلغ: <span style="color: #ef4444;">${req.refund_amount} جنيه</span>
+                                </p>
+                                <p style="font-size: 1.05rem; font-weight: bold;">
+                                    رقم المحفظة اللي هتحول عليه: <span style="user-select: all; background: var(--bg-dark); padding: 2px 6px; border-radius: 4px;">${req.wallet_number}</span>
+                                </p>
+                                <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 5px;">تاريخ الطلب: ${d}</p>
+                            </div>
+                            <div>
+                                <button class="btn btn-outline" style="border-color: #10b981; color: #10b981;" onclick="markRefunded('${req.id}', this)">
+                                    <i data-lucide="check" style="width: 16px; height: 16px;"></i> أكدت التحويل
+                                </button>
+                            </div>
+                        `;
+                        list.appendChild(el);
+                    });
+                    lucide.createIcons();
+                } else {
+                    section.style.display = 'none';
+                }
+            } catch (err) {
+                console.error("Error loading refunds:", err);
+            }
+        }
+        
+        async function markRefunded(refundId, btnEl) {
+            if (!confirm('متأكد إنك حولت الفلوس للعميل؟')) return;
+            
+            btnEl.disabled = true;
+            btnEl.textContent = 'بنحدث...';
+            
+            try {
+                const { error } = await supabase
+                    .from('refund_requests')
+                    .update({ status: 'refunded', refunded_at: new Date().toISOString() })
+                    .eq('id', refundId);
+                    
+                if (error) throw error;
+                
+                btnEl.closest('div').parentElement.style.opacity = '0.5';
+                btnEl.textContent = 'تم التحويل 💯';
+                setTimeout(() => {
+                    btnEl.closest('div').parentElement.remove();
+                    if (document.getElementById('refundsList').children.length === 0) {
+                        document.getElementById('refundsSection').style.display = 'none';
+                    }
+                }, 1000);
+            } catch (err) {
+                alert('حصلت مشكلة: ' + err.message);
+                btnEl.disabled = false;
+                btnEl.innerHTML = '<i data-lucide="check" style="width: 16px; height: 16px;"></i> أكدت التحويل';
+                lucide.createIcons();
+            }
+        }
+    </script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js');
+            });
+        }
+    </script>
+</body>
+</html>

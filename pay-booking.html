@@ -1,0 +1,108 @@
+﻿<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إتمام الدفع | ملاعب مدينة السادات</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="css/style.css">
+
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0f172a">
+</head>
+<body>
+    <div class="app-container">
+        <header class="main-header">
+            <div class="logo">
+                <i data-lucide="goal"></i>
+                <a href="index.html" style="color: inherit; text-decoration: none;"><h1>ملاعب مصر</h1></a>
+            </div>
+            <nav class="nav-links">
+                <a href="index.html" class="nav-link">الرئيسية</a>
+                <a href="my-bookings.html" class="nav-link">حجوزاتي</a>
+            </nav>
+        </header>
+
+        <main id="app-content">
+            <div class="form-container" style="max-width: 600px; text-align: center; margin: 40px auto;">
+                
+                <div id="loadingIndicator" style="padding: 40px;">
+                    <div class="football-loader">⚽</div>
+                    <p style="margin-top: 15px;">بنجيب تفاصيل الدفع... ثواني يا كابتن</p>
+                </div>
+                
+                <div id="paymentContent" class="animate-fade-in" style="display: none;">
+                    <div style="background-color: rgba(245, 158, 11, 0.1); color: #f59e0b; padding: 20px; border-radius: 50%; width: 80px; height: 80px; margin: 0 auto 20px; display: flex; justify-content: center; align-items: center;">
+                        <i data-lucide="clock" style="width: 40px; height: 40px;"></i>
+                    </div>
+                    
+                    <h2 style="color: #f59e0b; margin-bottom: 10px;">حجزك اتسجل مبدئياً! ⏳</h2>
+                    <p style="font-size: 1.1rem; margin-bottom: 20px;">
+                        الميعاد ده بقى محجوز باسمك لمدة <strong style="color: #ef4444;">10 دقايق</strong> بس. ياريت تحول الفلوس وتأكد الحجز قبل الوقت ما يخلص عشان منلغيهوش عليك.
+                    </p>
+
+                    <div style="background-color: var(--bg-dark); border: 1px solid var(--border-color); padding: 25px; border-radius: 16px; margin-bottom: 30px; text-align: right;">
+                        <h3 style="color: var(--primary-color); margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">هتحول فين؟ (أرقام الملعب)</h3>
+                        <p style="font-size: 1.1rem; margin-bottom: 10px;">
+                            <i data-lucide="smartphone" style="width: 20px; height: 20px; vertical-align: middle; color: #ef4444;"></i> 
+                            فودافون كاش: <strong id="vCashNum" style="user-select: all; font-size: 1.2rem; margin-right: 10px;">...</strong>
+                        </p>
+                        <div id="instaPayDiv" style="display: none;">
+                            <p style="font-size: 1.1rem;">
+                                <i data-lucide="link" style="width: 20px; height: 20px; vertical-align: middle; color: #8b5cf6;"></i> 
+                                إنستاباي: <strong id="instaLink" style="user-select: all; font-size: 1.2rem; margin-right: 10px;">...</strong>
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div style="background-color: var(--bg-card); border: 1px dashed var(--primary-color); padding: 25px; border-radius: 16px; margin-bottom: 30px;">
+                        <h3 style="margin-bottom: 15px;">ارفع وصل الدفع (سكرين شوت)</h3>
+                        <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px;">
+                            حط السكرين شوت هنا عشان نأكد حجزك على طول وتبقى في التمام!
+                        </p>
+                        
+                        <form id="uploadReceiptForm">
+                            <input type="file" id="receiptImage" accept="image/*" required style="margin-bottom: 15px; width: 100%;">
+                            
+                            <div id="uploadError" class="error-message"></div>
+                            <div id="uploadSuccess" class="success-message"></div>
+                            
+                            <button type="submit" class="btn btn-primary btn-full" id="submitReceiptBtn">
+                                <i data-lucide="upload"></i> ارفع الوصل وأكد الحجز 🚀
+                            </button>
+                        </form>
+                    </div>
+
+                    <div style="display: flex; gap: 15px; justify-content: center;">
+                        <a href="my-bookings.html" class="btn btn-outline">روح لحجوزاتي</a>
+                    </div>
+                </div>
+                
+                <div id="successContent" class="animate-fade-in" style="display: none;">
+                    <div style="background-color: rgba(16, 185, 129, 0.1); color: #10b981; padding: 20px; border-radius: 50%; width: 80px; height: 80px; margin: 0 auto 20px; display: flex; justify-content: center; align-items: center;">
+                        <i data-lucide="check-circle" style="width: 40px; height: 40px;"></i>
+                    </div>
+                    <h2 style="color: #10b981; margin-bottom: 15px;">عاش! تم تأكيد حجزك 🎉</h2>
+                    <p style="margin-bottom: 25px; font-size: 1.1rem;">ميعادك اتثبت يا نجم، مستنينك في الملعب تكسر الدنيا!</p>
+                    <a href="my-bookings.html" class="btn btn-primary">شوف تفاصيل الحجز</a>
+                </div>
+                
+            </div>
+        </main>
+    </div>
+
+    <script src="js/supabase.js"></script>
+    <script src="js/pay-booking.js"></script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js');
+            });
+        }
+    </script>
+</body>
+</html>

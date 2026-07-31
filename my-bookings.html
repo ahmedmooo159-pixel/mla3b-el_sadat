@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>حجوزاتي | ملاعب مدينة السادات</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="css/style.css">
+
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0f172a">
+</head>
+<body>
+    <div class="app-container">
+        <header class="main-header">
+            <div class="logo">
+                <i data-lucide="goal"></i>
+                <a href="index.html" style="color: inherit; text-decoration: none;"><h1>ملاعب مدينة السادات</h1></a>
+            </div>
+            <nav class="nav-links">
+                <a href="index.html" class="nav-link">الرئيسية</a>
+                <a href="my-bookings.html" class="nav-link active">حجوزاتي</a>
+            </nav>
+            <div class="auth-buttons">
+                <a href="index.html" class="btn btn-outline" id="loginBtn">دخول أصحاب الملاعب</a>
+            </div>
+        </header>
+
+        <main id="app-content">
+            <section class="hero-section" style="padding: 40px 0; margin-top: 20px;">
+                <div class="hero-content">
+                    <h2 style="font-size: 2.5rem;">تابع حجوزاتك يا بطل 🏆</h2>
+                    <p>اكتب رقم موبايلك اللي حجزت بيه عشان تشوف كل حجوزاتك.</p>
+                    
+                    <div class="search-bar" style="margin-top: 30px;">
+                        <i data-lucide="phone" class="search-icon" style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+                        <input type="tel" id="phoneInput" placeholder="رقم الموبايل (مثال: 01012345678)" style="width: 100%; padding: 15px 15px 15px 40px; border-radius: 12px; border: 1px solid var(--border-color); background-color: var(--bg-card); color: var(--text-light); font-family: inherit; font-size: 1rem;">
+                        <button id="searchBtn" class="btn btn-primary" style="position: absolute; left: 5px; top: 5px; bottom: 5px; padding: 0 20px;">دور</button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="pitches-section" style="padding-top: 30px;">
+                <div id="loadingIndicator" style="text-align: center; padding: 40px; color: var(--text-muted); display: none;">
+                    <div class="football-loader">⚽</div>
+                    <p style="margin-top: 15px;">بندورلك على الحجوزات... ثواني</p>
+                </div>
+                
+                <div id="bookingsList" class="grid-2" style="display: none;"></div>
+                
+                <!-- Recurring Plans Section -->
+                <div id="recurringSection" style="display: none; margin-top: 40px;">
+                    <h3 style="font-size: 1.4rem; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px;">
+                        <i data-lucide="repeat" style="color: #8b5cf6;"></i> حجوزاتك الثابتة (الأسبوعية) 🔄
+                    </h3>
+                    <div id="recurringList" class="grid-2"></div>
+                </div>
+                
+                <div id="noResults" class="empty-state" style="display: none; margin-top: 20px;">
+                    <i data-lucide="search-x"></i>
+                    <h3>معندكش حجوزات بالرقم ده</h3>
+                    <p>متأكد إنك كتبت الرقم صح اللي حجزت بيه؟ جرب تاني يا نجم.</p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Cancel Booking Modal -->
+    <div id="cancelModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content animate-fade-in">
+            <div class="modal-header">
+                <h3 style="color: #ef4444;">إلغاء الحجز ❌</h3>
+                <button class="close-btn" onclick="closeCancelModal()"><i data-lucide="x"></i></button>
+            </div>
+            <div class="modal-body">
+                <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid #f59e0b; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                    <p style="font-weight: bold; margin-bottom: 5px;">ملعب: <span id="cancelPitchName"></span></p>
+                    <p style="color: var(--text-muted); font-size: 0.9rem;" id="cancelPolicyText"></p>
+                    <p style="margin-top: 10px; font-size: 1.1rem;">المبلغ اللي هيرجعلك: <strong style="color: #10b981;" id="cancelRefundAmount"></strong> جنيه</p>
+                </div>
+                
+                <form id="cancelBookingForm">
+                    <input type="hidden" id="cancelBookingId">
+                    <div class="form-group">
+                        <label>رقم المحفظة (فودافون كاش / إنستاباي) عشان نبعتلك الفلوس</label>
+                        <input type="tel" id="refundWalletNumber" required placeholder="010XXXXXXXX">
+                    </div>
+                    <div id="cancelError" class="error-message"></div>
+                    <button type="submit" id="confirmCancelBtn" class="btn btn-full" style="background: #ef4444; color: white; margin-top: 10px;">
+                        أكد الإلغاء وابعتلي الفلوس
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/supabase.js"></script>
+    <script src="js/my-bookings.js"></script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js');
+            });
+        }
+    </script>
+</body>
+</html>

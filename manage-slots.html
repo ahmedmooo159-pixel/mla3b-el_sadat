@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة المواعيد | ملاعب مصر</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="css/style.css">
+    
+    <style>
+        .dashboard-hero {
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(15, 23, 42, 0.8));
+            border-radius: 20px;
+            padding: 30px;
+            margin: 20px 0 40px 0;
+            border: 1px solid var(--glass-border);
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .manage-container {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 30px;
+        }
+        @media (max-width: 900px) {
+            .manage-container {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        
+        .panel-title {
+            font-size: 1.3rem;
+            margin-bottom: 25px;
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 15px;
+        }
+        
+        .slots-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .slot-card {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 15px;
+            position: relative;
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+        .slot-card:hover {
+            border-color: var(--primary-color);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(34, 197, 94, 0.15);
+        }
+        
+        .slot-day {
+            font-weight: 700;
+            color: var(--primary-color);
+            font-size: 1.1rem;
+            margin-bottom: 5px;
+        }
+        
+        .slot-time {
+            font-size: 0.9rem;
+            color: var(--text-light);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .delete-btn {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background-color: rgba(239, 68, 68, 0.1);
+            border: none;
+            color: #ef4444;
+            border-radius: 8px;
+            padding: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .delete-btn:hover {
+            background-color: #ef4444;
+            color: white;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            background: rgba(34, 197, 94, 0.2);
+            color: var(--primary-color);
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+        
+        /* Styled time inputs */
+        input[type="time"]::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+            cursor: pointer;
+        }
+        
+        .slot-card.manual-booked {
+            border-color: #f59e0b;
+            background: rgba(245, 158, 11, 0.05);
+        }
+        .slot-card.manual-booked .slot-day {
+            color: #f59e0b;
+        }
+        
+        .manual-book-btn {
+            width: 100%;
+            margin-top: 10px;
+            background: transparent;
+            border: 1px solid var(--primary-color);
+            color: var(--primary-color);
+            border-radius: 8px;
+            padding: 8px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.85rem;
+            transition: all 0.3s;
+        }
+        .manual-book-btn:hover {
+            background: var(--primary-color);
+            color: var(--bg-darker);
+        }
+        
+        .release-btn {
+            width: 100%;
+            margin-top: 10px;
+            background: transparent;
+            border: 1px solid #f59e0b;
+            color: #f59e0b;
+            border-radius: 8px;
+            padding: 8px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.85rem;
+            transition: all 0.3s;
+        }
+        .release-btn:hover {
+            background: #f59e0b;
+            color: #000;
+        }
+    </style>
+
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0f172a">
+</head>
+<body>
+    <div class="app-container">
+        <header class="main-header">
+            <div class="logo">
+                <i data-lucide="goal"></i>
+                <a href="dashboard.html" style="color: inherit; text-decoration: none;"><h1>ملاعب مصر</h1></a>
+            </div>
+            <nav class="nav-links">
+                <a href="dashboard.html" class="nav-link">لوحة التحكم</a>
+            </nav>
+        </header>
+
+        <main id="app-content">
+            <div class="dashboard-hero animate-fade-in">
+                <div style="background: var(--primary-color); color: var(--bg-darker); padding: 15px; border-radius: 16px;">
+                    <i data-lucide="calendar-days" style="width: 32px; height: 32px;"></i>
+                </div>
+                <div>
+                    <h2 id="pitchNameTitle" style="font-size: 2rem; margin-bottom: 5px;">بنحمل...</h2>
+                    <p style="color: var(--text-muted); font-size: 1.1rem;">ضيف المواعيد الفاضية عندك عشان الناس تقدر تحجز.</p>
+                </div>
+            </div>
+            
+            <div class="manage-container animate-fade-in">
+                <!-- Add Slot Form -->
+                <div class="panel">
+                    <h3 class="panel-title"><i data-lucide="plus-circle"></i> ضيف ميعاد جديد</h3>
+                    <form id="addSlotForm">
+                        <input type="hidden" id="pitchId">
+                        
+                        <div class="form-group" style="position: relative;">
+                            <label>يوم إيه في الأسبوع؟</label>
+                            <select id="dayOfWeek" required style="appearance: none; cursor: pointer;">
+                                <option value="6">السبت</option>
+                                <option value="0">الأحد</option>
+                                <option value="1">الإثنين</option>
+                                <option value="2">الثلاثاء</option>
+                                <option value="3">الأربعاء</option>
+                                <option value="4">الخميس</option>
+                                <option value="5">الجمعة</option>
+                            </select>
+                            <i data-lucide="chevron-down" style="position: absolute; left: 15px; top: 40px; color: var(--text-muted); pointer-events: none;"></i>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>هتبدأ الساعة كام؟</label>
+                            <input type="time" id="startTime" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>هتخلص الساعة كام؟</label>
+                            <input type="time" id="endTime" required>
+                        </div>
+                        
+                        <div id="formError" class="error-message"></div>
+                        <div id="formSuccess" class="success-message"></div>
+                        
+                        <button type="submit" class="btn btn-primary btn-full" id="submitBtn" style="margin-top: 10px;">
+                            ضيف للمواعيد المتاحة
+                        </button>
+                    </form>
+                </div>
+                
+                <!-- Current Slots List -->
+                <div class="panel">
+                    <h3 class="panel-title"><i data-lucide="list"></i> المواعيد الفاضية دلوقتي</h3>
+                    
+                    <div id="loadingIndicator" style="text-align: center; color: var(--text-muted); padding: 40px;">
+                        <div class="football-loader">⚽</div>
+                        <p style="margin-top: 10px;">بنجيب المواعيد...</p>
+                    </div>
+                    
+                    <div id="slotsList" class="slots-grid" style="display: none;">
+                        <!-- Slots will be rendered here -->
+                    </div>
+                    
+                    <div id="noSlots" class="empty-state" style="display: none; padding: 40px;">
+                        <i data-lucide="calendar-x" style="width: 48px; height: 48px; margin-bottom: 15px; color: var(--text-muted);"></i>
+                        <h4 style="margin-bottom: 10px;">مفيش مواعيد متسجلة</h4>
+                        <p style="font-size: 0.95rem; color: var(--text-muted);">إنت لسه مضفتش أي ميعاد للحجز. ضيف أول ميعاد ليك من القائمة اللي في الجنب.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Bookings List -->
+            <div class="panel animate-fade-in" style="margin-top: 30px;">
+                <h3 class="panel-title"><i data-lucide="users"></i> حجوزاتك الحالية</h3>
+                <p style="color: var(--text-muted); margin-bottom: 20px;">هنا هتشوف تفاصيل كل الناس اللي حجزت مواعيدك.</p>
+                
+                <div id="bookingsListContainer">
+                    <div class="empty-state" style="padding: 30px;">
+                        <i data-lucide="inbox"></i>
+                        <p>مفيش أي حجوزات جاية.</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/supabase.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/manage-slots.js"></script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js');
+            });
+        }
+    </script>
+</body>
+</html>
+
+<!-- Manual Booking Modal -->
+<div id="manualBookingModal" class="modal-overlay" style="display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); backdrop-filter:blur(5px); display:none; justify-content:center; align-items:center; z-index:1000;">
+    <div class="modal-content animate-fade-in" style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:20px; width:90%; max-width:480px; padding:30px; box-shadow:0 20px 40px rgba(0,0,0,0.5);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid var(--border-color); padding-bottom:15px;">
+            <h3 style="color: #f59e0b; margin:0;">حجز يدوي (كاش / تليفون)</h3>
+            <button onclick="closeManualModal()" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; font-size:1.2rem;">✖</button>
+        </div>
+        <div>
+            <p id="manualSlotInfo" style="color:var(--text-muted); margin-bottom:20px; font-weight:bold;"></p>
+            <form id="manualBookingForm">
+                <input type="hidden" id="manualSlotId">
+                <input type="hidden" id="manualBookingDate">
+                <div class="form-group">
+                    <label>ملاحظة (اختياري) — زي: اسم العميل</label>
+                    <input type="text" id="manualNotes" placeholder="مثال: كابتن ماجد — دفع كاش">
+                </div>
+                <div id="manualError" class="error-message"></div>
+                <button type="submit" class="btn btn-full" style="background:#f59e0b; color:#000; margin-top:10px;" id="confirmManualBtn">
+                    ثبت الحجز اليدوي
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
