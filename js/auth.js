@@ -113,11 +113,23 @@ async function handleLogout() {
 }
 
 // Initialize auth listeners after DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
+// Initialize auth listeners after DOM is ready
+document.addEventListener('DOMContentLoaded', async () => {
     if (window.supabaseClient) {
+        console.log('Supabase client loaded:', !!window.supabaseClient);
+        
+        // Get current session immediately
+        const { data: { session } } = await window.supabaseClient.auth.getSession();
+        window.currentUser = session?.user || null;
+        console.log('Current user from session:', window.currentUser);
+        
         checkSession();
+        
+        // Listen for auth changes
         window.supabaseClient.auth.onAuthStateChange((event, session) => {
             window.currentUser = session?.user || null;
+            console.log('Auth state changed:', event, window.currentUser);
+            
             if (event === 'SIGNED_OUT') {
                 const path = window.location.pathname;
                 const isProtectedRoute = path.includes('dashboard.html') || path.includes('create-pitch.html');
@@ -126,5 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         });
+    } else {
+        console.error('Supabase client not loaded!');
     }
 });
