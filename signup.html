@@ -6,7 +6,7 @@
     <title>إنشاء حساب جديد للمالكين</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0"></script>
     <link rel="stylesheet" href="css/style.css">
 
     <link rel="manifest" href="/manifest.json">
@@ -49,11 +49,20 @@
         </main>
     </div>
 
+    <!-- ترتيب الـ scripts مهم! -->
     <script src="js/supabase.js"></script>
     <script src="js/auth.js"></script>
+    
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
+            
+            // تأكد من أن handleSignup محملة
+            if (typeof handleSignup !== 'function') {
+                console.error('handleSignup is not defined');
+                return;
+            }
+            
             const form = document.getElementById('signupForm');
             form.addEventListener('submit', async (e) => {
                 e.preventDefault();
