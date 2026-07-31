@@ -3,7 +3,7 @@
 // Fetch platform settings on load
 async function loadPlatformSettings() {
     try {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .from('platform_settings')
             .select('*')
             .single();
@@ -54,7 +54,7 @@ async function handleSubscriptionUpload(e) {
         }
         
         // Fetch pitch and owner details for the notification
-        const { data: pitchData, error: pitchError } = await supabase
+        const { data: pitchData, error: pitchError } = await supabaseClient
             .from('pitches')
             .select('name, owners(email, phone)')
             .eq('id', pitchId)
@@ -68,21 +68,21 @@ async function handleSubscriptionUpload(e) {
         const filePath = `${currentUser.id}/${fileName}`;
         
         // 1. Upload proof to storage
-        const { error: uploadError } = await supabase.storage
+        const { error: uploadError } = await supabaseClient.storage
             .from('payment_proofs')
             .upload(filePath, file);
             
         if (uploadError) throw new Error("فشل رفع الصورة: " + uploadError.message);
         
         // Create a signed URL valid for 7 days so the admin can view it directly from Telegram
-        const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+        const { data: signedUrlData, error: signedUrlError } = await supabaseClient.storage
             .from('payment_proofs')
             .createSignedUrl(filePath, 60 * 60 * 24 * 7);
             
         const receiptUrl = signedUrlError ? 'رابط غير متاح (افتح لوحة التحكم)' : signedUrlData.signedUrl;
         
         // 2. Update pitch status to 'pending'
-        const { error: updateError } = await supabase
+        const { error: updateError } = await supabaseClient
             .from('pitches')
             .update({ subscription_status: 'pending' })
             .eq('id', pitchId)
@@ -91,7 +91,7 @@ async function handleSubscriptionUpload(e) {
         if (updateError) throw new Error("تم رفع الصورة ولكن فشل تحديث حالة الملعب: " + updateError.message);
         
         // 3. Invoke Telegram Edge Function
-        const { data: fnData, error: fnError } = await supabase.functions.invoke('notify-subscription', {
+        const { data: fnData, error: fnError } = await supabaseClient.functions.invoke('notify-subscription', {
             body: { 
                 receiptUrl: receiptUrl,
                 pitchName: pitchData.name,
@@ -118,11 +118,11 @@ async function handleSubscriptionUpload(e) {
     }
 }
 
-// Ensure the page loads settings if supabase is ready
-if (typeof supabase !== 'undefined') {
+// Ensure the page loads settings if supabaseClient is ready
+if (typeof supabaseClient !== 'undefined') {
     loadPlatformSettings();
 } else {
     document.addEventListener('DOMContentLoaded', () => {
-        if (supabase) loadPlatformSettings();
+        if (supabaseClient) loadPlatformSettings();
     });
 }

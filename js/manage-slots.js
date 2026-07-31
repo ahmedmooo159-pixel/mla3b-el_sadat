@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function verifyOwnershipAndLoad(pitchId) {
     try {
-        const { data: pitch, error } = await supabase
+        const { data: pitch, error } = await supabaseClient
             .from('pitches')
             .select('*')
             .eq('id', pitchId)
@@ -70,7 +70,7 @@ async function loadSlots(pitchId) {
     noSlots.style.display = 'none';
     
     try {
-        const { data: slots, error } = await supabase
+        const { data: slots, error } = await supabaseClient
             .from('slots')
             .select('*')
             .eq('pitch_id', pitchId)
@@ -124,7 +124,7 @@ async function renderSlots(slots) {
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
     
-    const { data: manualBookings } = await supabase
+    const { data: manualBookings } = await supabaseClient
         .from('bookings')
         .select('slot_id, booking_date, id, notes, status')
         .in('slot_id', slotIds)
@@ -206,7 +206,7 @@ async function handleManualBooking(e) {
     btn.textContent = 'جاري التثبيت...';
     
     try {
-        const { error } = await supabase
+        const { error } = await supabaseClient
             .from('bookings')
             .insert([{
                 slot_id: slotId,
@@ -234,7 +234,7 @@ window.releaseManualBooking = async function(bookingId, slotId) {
     if (!confirm('هل أنت متأكد من فك القفل وإتاحة هذا الموعد للعملاء مرة أخرى؟')) return;
     
     try {
-        const { error } = await supabase
+        const { error } = await supabaseClient
             .from('bookings')
             .update({ status: 'cancelled' })
             .eq('id', bookingId);
@@ -269,7 +269,7 @@ async function handleAddSlot(e) {
     btn.innerHTML = 'جاري الإضافة...';
     
     try {
-        const { error } = await supabase
+        const { error } = await supabaseClient
             .from('slots')
             .insert([{ pitch_id: pitchId, day_of_week: dayOfWeek, start_time: startTime, end_time: endTime, is_active: true }]);
             
@@ -293,7 +293,7 @@ async function handleAddSlot(e) {
 window.deleteSlot = async function(slotId) {
     if (!confirm('هل أنت متأكد من حذف هذا الموعد؟')) return;
     try {
-        const { error } = await supabase.from('slots').delete().eq('id', slotId);
+        const { error } = await supabaseClient.from('slots').delete().eq('id', slotId);
         if (error) throw error;
         await loadSlots(currentPitchId);
     } catch (error) {

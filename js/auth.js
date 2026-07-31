@@ -3,10 +3,10 @@
 let currentUser = null;
 
 async function checkSession() {
-    if (!supabase) return;
+    if (!supabaseClient) return;
     
     try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await supabaseClient.auth.getSession();
         currentUser = session?.user || null;
         
         const path = window.location.pathname;
@@ -47,7 +47,7 @@ async function handleLogin(email, password) {
     btn.disabled = true;
     btn.textContent = 'جاري الدخول...';
     
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
     
     if (error) {
         errorDiv.textContent = error.message;
@@ -68,7 +68,7 @@ async function handleSignup(email, password, phone) {
     btn.disabled = true;
     btn.textContent = 'جاري الإنشاء...';
     
-    const { data, error } = await supabase.auth.signUp({
+    const { data, error } = await supabaseClient.auth.signUp({
         email,
         password,
     });
@@ -80,7 +80,7 @@ async function handleSignup(email, password, phone) {
     } else {
         // Insert into public.owners
         const userId = data.user.id;
-        const { error: dbError } = await supabase.from('owners').insert([
+        const { error: dbError } = await supabaseClient.from('owners').insert([
             { id: userId, email: email, phone: phone }
         ]);
         
@@ -98,13 +98,13 @@ async function handleSignup(email, password, phone) {
 }
 
 async function handleLogout() {
-    await supabase.auth.signOut();
+    await supabaseClient.auth.signOut();
     window.location.href = 'index.html';
 }
 
-if (supabase) {
+if (supabaseClient) {
     checkSession();
-    supabase.auth.onAuthStateChange((event, session) => {
+    supabaseClient.auth.onAuthStateChange((event, session) => {
         currentUser = session?.user || null;
         if (event === 'SIGNED_OUT') {
             const path = window.location.pathname;

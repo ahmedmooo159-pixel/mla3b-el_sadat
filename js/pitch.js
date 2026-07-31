@@ -2,7 +2,7 @@
 
 async function loadAreasForPitch() {
     try {
-        const { data, error } = await supabase.from('platform_settings').select('areas').single();
+        const { data, error } = await supabaseClient.from('platform_settings').select('areas').single();
         const select = document.getElementById('pitchLocation');
         if (!error && data && data.areas && select) {
             select.innerHTML = '<option value="" disabled selected>اختر المنطقة</option>';
@@ -18,7 +18,7 @@ async function loadAreasForPitch() {
     }
 }
 
-if (typeof supabase !== 'undefined') {
+if (typeof supabaseClient !== 'undefined') {
     document.addEventListener('DOMContentLoaded', loadAreasForPitch);
 }
 
@@ -60,14 +60,14 @@ async function handlePitchCreation(e) {
             const fileName = `${Math.random()}.${fileExt}`;
             const filePath = `${currentUser.id}/${fileName}`;
             
-            const { error: uploadError } = await supabase.storage
+            const { error: uploadError } = await supabaseClient.storage
                 .from('pitch_photos')
                 .upload(filePath, file);
                 
             if (uploadError) throw new Error("فشل رفع الصورة: " + uploadError.message);
             
             // Get public URL
-            const { data: { publicUrl } } = supabase.storage
+            const { data: { publicUrl } } = supabaseClient.storage
                 .from('pitch_photos')
                 .getPublicUrl(filePath);
                 
@@ -75,7 +75,7 @@ async function handlePitchCreation(e) {
         }
         
         // 2. Insert pitch record
-        const { error: insertError } = await supabase
+        const { error: insertError } = await supabaseClient
             .from('pitches')
             .insert([{
                 owner_id: currentUser.id,
@@ -93,7 +93,7 @@ async function handlePitchCreation(e) {
         if (insertError) throw new Error("فشل حفظ الملعب: " + insertError.message);
         
         // 3. Update owner's telegram ID
-        const { error: ownerError } = await supabase
+        const { error: ownerError } = await supabaseClient
             .from('owners')
             .update({ telegram_chat_id: telegramId })
             .eq('id', currentUser.id);

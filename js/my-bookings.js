@@ -30,7 +30,7 @@ async function fetchAllBookings(phone) {
     
     try {
         // Fetch normal bookings
-        const { data: bookings, error: bErr } = await supabase
+        const { data: bookings, error: bErr } = await supabaseClient
             .from('bookings')
             .select(`*, slots(day_of_week, start_time, end_time, pitches(name, location, price_per_hour, cancel_cutoff_hours, refund_percent_after_cutoff))`)
             .eq('customer_phone', phone)
@@ -38,7 +38,7 @@ async function fetchAllBookings(phone) {
             .order('created_at', { ascending: false });
         
         // Fetch recurring bookings
-        const { data: recurring, error: rErr } = await supabase
+        const { data: recurring, error: rErr } = await supabaseClient
             .from('recurring_bookings')
             .select(`*, slots(day_of_week, start_time, end_time, pitches(name, location)), recurring_occurrences(id, occurrence_date, status)`)
             .eq('customer_phone', phone)
@@ -224,15 +224,15 @@ async function handleCancelSubmit(e) {
     btn.textContent = 'جاري الإلغاء...';
     
     try {
-        const { error: cancelErr } = await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', bookingId);
+        const { error: cancelErr } = await supabaseClient.from('bookings').update({ status: 'cancelled' }).eq('id', bookingId);
         if (cancelErr) throw cancelErr;
         
         if (refundAmount > 0) {
-            await supabase.from('refund_requests').insert([{ booking_id: bookingId, refund_amount: refundAmount, wallet_number: walletNum, status: 'pending' }]);
+            await supabaseClient.from('refund_requests').insert([{ booking_id: bookingId, refund_amount: refundAmount, wallet_number: walletNum, status: 'pending' }]);
         }
         
         try {
-            await supabase.functions.invoke('notify-owner-refund', { body: { booking_id: bookingId, refund_amount: refundAmount, wallet_number: walletNum } });
+            await supabaseClient.functions.invoke('notify-owner-refund', { body: { booking_id: bookingId, refund_amount: refundAmount, wallet_number: walletNum } });
         } catch (ignore) {}
         
         window.closeCancelModal();

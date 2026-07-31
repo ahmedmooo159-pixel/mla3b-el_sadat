@@ -5,7 +5,7 @@ let allPitchesData = [];
 document.addEventListener('DOMContentLoaded', async () => {
     lucide.createIcons();
     
-    supabase.auth.onAuthStateChange(async (event, session) => {
+    supabaseClient.auth.onAuthStateChange(async (event, session) => {
         if (session?.user) {
             checkAndLoadAdmin(session.user.id);
         } else {
@@ -26,7 +26,7 @@ async function checkAndLoadAdmin(userId) {
     const denied = document.getElementById('accessDeniedMsg');
     
     try {
-        const { data: owner } = await supabase
+        const { data: owner } = await supabaseClient
             .from('owners')
             .select('role')
             .eq('id', userId)
@@ -62,7 +62,7 @@ function switchTab(tabId) {
 // 1. Pending Subscriptions
 async function loadPendingSubscriptions() {
     try {
-        const { data: pitches, error } = await supabase
+        const { data: pitches, error } = await supabaseClient
             .from('pitches')
             .select(`
                 id, name, location, price_per_hour, payment_proof_url, updated_at,
@@ -85,7 +85,7 @@ async function loadPendingSubscriptions() {
         pitches.forEach(pitch => {
             let receiptBtn = '';
             if (pitch.payment_proof_url) {
-                const { data: publicUrlData } = supabase.storage
+                const { data: publicUrlData } = supabaseClient.storage
                     .from('payment_proofs')
                     .getPublicUrl(pitch.payment_proof_url);
                 const url = publicUrlData.publicUrl;
@@ -125,7 +125,7 @@ async function activateSubscription(pitchId, btnEl) {
         const expiresAt = new Date();
         expiresAt.setDate(expiresAt.getDate() + 30);
         
-        const { error } = await supabase
+        const { error } = await supabaseClient
             .from('pitches')
             .update({ 
                 subscription_status: 'active',
@@ -165,7 +165,7 @@ window.closeReceiptModal = closeReceiptModal;
 // 2. All Pitches
 async function loadAllPitches() {
     try {
-        const { data: pitches, error } = await supabase
+        const { data: pitches, error } = await supabaseClient
             .from('pitches')
             .select(`
                 id, name, location, subscription_status, subscription_expires_at, created_at,
@@ -226,7 +226,7 @@ function renderPitches(pitches) {
 // 3. Settings
 async function loadSettings() {
     try {
-        const { data: settings } = await supabase.from('platform_settings').select('*').eq('id', 1).single();
+        const { data: settings } = await supabaseClient.from('platform_settings').select('*').eq('id', 1).single();
         if (settings) {
             document.getElementById('settingVCash').value = settings.vodafone_cash_number;
             document.getElementById('settingInstapay').value = settings.instapay_link;
@@ -244,7 +244,7 @@ async function saveSettings(e) {
     btn.textContent = 'جاري الحفظ...';
     
     try {
-        const { error } = await supabase
+        const { error } = await supabaseClient
             .from('platform_settings')
             .update({
                 vodafone_cash_number: document.getElementById('settingVCash').value,

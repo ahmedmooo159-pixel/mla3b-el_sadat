@@ -26,7 +26,7 @@ async function loadPaymentDetails(bookingId) {
     
     try {
         // Fetch booking info with slot and pitch info to get owner payment details
-        const { data: booking, error: bookingErr } = await supabase
+        const { data: booking, error: bookingErr } = await supabaseClient
             .from('bookings')
             .select(`
                 id, status, created_at,
@@ -60,7 +60,7 @@ async function loadPaymentDetails(bookingId) {
             lucide.createIcons();
             
             // Optionally auto-cancel in DB, though our logic in pitch-details treats it as cancelled automatically
-            await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', bookingId);
+            await supabaseClient.from('bookings').update({ status: 'cancelled' }).eq('id', bookingId);
             return;
         }
         
@@ -106,20 +106,20 @@ async function handleReceiptUpload(e, bookingId) {
         const fileExt = file.name.split('.').pop();
         const fileName = `${bookingId}-${Date.now()}.${fileExt}`;
         
-        const { error: uploadError } = await supabase.storage
+        const { error: uploadError } = await supabaseClient.storage
             .from('booking_receipts')
             .upload(fileName, file);
             
         if (uploadError) throw new Error("فشل في رفع الصورة: " + uploadError.message);
         
-        const { data: publicUrlData } = supabase.storage
+        const { data: publicUrlData } = supabaseClient.storage
             .from('booking_receipts')
             .getPublicUrl(fileName); // Even if bucket is false public, usually we just store the path, but let's store path.
             
         const filePath = fileName; 
         
         // Update booking status
-        const { error: updateError } = await supabase
+        const { error: updateError } = await supabaseClient
             .from('bookings')
             .update({
                 status: 'confirmed',
@@ -134,7 +134,7 @@ async function handleReceiptUpload(e, bookingId) {
         
         // Notify Telegram via Edge Function
         try {
-            await supabase.functions.invoke('notify-owner-booking', {
+            await supabaseClient.functions.invoke('notify-owner-booking', {
                 body: { booking_id: bookingId }
             });
         } catch (ignore) { console.log('Telegram notify failed, ignoring for now'); }

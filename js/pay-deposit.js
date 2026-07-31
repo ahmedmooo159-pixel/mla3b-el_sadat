@@ -25,7 +25,7 @@ async function loadDepositDetails(recurringId) {
     const content = document.getElementById('depositContent');
     
     try {
-        const { data: rb, error } = await supabase
+        const { data: rb, error } = await supabaseClient
             .from('recurring_bookings')
             .select(`
                 id, customer_name, deposit_amount, status, deposit_screenshot,
@@ -101,13 +101,13 @@ async function handleDepositUpload(e, recurringId) {
         const fileExt = file.name.split('.').pop();
         const fileName = `deposit-${recurringId}-${Date.now()}.${fileExt}`;
         
-        const { error: uploadErr } = await supabase.storage
+        const { error: uploadErr } = await supabaseClient.storage
             .from('booking_receipts')
             .upload(fileName, file);
         if (uploadErr) throw new Error("فشل رفع الصورة: " + uploadErr.message);
         
         // Update recurring booking with deposit screenshot
-        const { error: updateErr } = await supabase
+        const { error: updateErr } = await supabaseClient
             .from('recurring_bookings')
             .update({ deposit_screenshot: fileName })
             .eq('id', recurringId);
@@ -115,7 +115,7 @@ async function handleDepositUpload(e, recurringId) {
         
         // Create the first upcoming occurrence for confirmation
         const nextDate = getNextWeekDate(new Date());
-        await supabase
+        await supabaseClient
             .from('recurring_occurrences')
             .insert([{
                 recurring_booking_id: recurringId,
@@ -125,7 +125,7 @@ async function handleDepositUpload(e, recurringId) {
         
         // Notify owner via Edge Function
         try {
-            await supabase.functions.invoke('notify-owner-deposit', {
+            await supabaseClient.functions.invoke('notify-owner-deposit', {
                 body: { recurring_id: recurringId }
             });
         } catch (ignore) {}

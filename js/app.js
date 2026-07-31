@@ -28,7 +28,7 @@ async function loadPublicPitches() {
     
     try {
         // Fetch pitches where subscription is active
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .from('pitches')
             .select('*')
             .eq('subscription_status', 'active')
@@ -72,7 +72,7 @@ function filterPitches(query) {
 
 async function loadAreasDropdown() {
     try {
-        const { data, error } = await supabase.from('platform_settings').select('areas').single();
+        const { data, error } = await supabaseClient.from('platform_settings').select('areas').single();
         if (!error && data && data.areas) {
             const select = document.getElementById('areaFilter');
             data.areas.forEach(area => {

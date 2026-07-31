@@ -29,7 +29,7 @@ async function loadPitchDetails(pitchId) {
     
     try {
         // Fetch pitch info
-        const { data: pitch, error } = await supabase
+        const { data: pitch, error } = await supabaseClient
             .from('pitches')
             .select('*')
             .eq('id', pitchId)
@@ -72,7 +72,7 @@ async function renderAvailableSlots(pitchId) {
     const noSlotsMsg = document.getElementById('noSlotsMsg');
     
     // 1. Fetch all active slot templates for this pitch
-    const { data: slots, error: slotsError } = await supabase
+    const { data: slots, error: slotsError } = await supabaseClient
         .from('slots')
         .select('*')
         .eq('pitch_id', pitchId)
@@ -105,7 +105,7 @@ async function renderAvailableSlots(pitchId) {
     
     // 3. Fetch all bookings for these slots from today onwards
     const slotIds = slots.map(s => s.id);
-    const { data: bookings, error: bookingsError } = await supabase
+    const { data: bookings, error: bookingsError } = await supabaseClient
         .from('bookings')
         .select('slot_id, booking_date, status, created_at')
         .in('slot_id', slotIds)
@@ -246,7 +246,7 @@ async function handleBookingSubmit(e) {
     btn.innerHTML = 'جاري تأكيد الحجز...';
     
     try {
-        const { data: existing } = await supabase
+        const { data: existing } = await supabaseClient
             .from('bookings')
             .select('id, status, created_at')
             .eq('slot_id', slotId)
@@ -265,7 +265,7 @@ async function handleBookingSubmit(e) {
             if (isBlocked) throw new Error("عذراً، لقد قام شخص آخر بحجز هذا الموعد للتو. يرجى اختيار موعد آخر.");
         }
         
-        const { data: newBooking, error: insertErr } = await supabase
+        const { data: newBooking, error: insertErr } = await supabaseClient
             .from('bookings')
             .insert([{
                 slot_id: slotId,
@@ -331,7 +331,7 @@ async function handleRecurringSubmit(e) {
     
     try {
         // Get pitch_id from slot
-        const { data: slot, error: slotErr } = await supabase
+        const { data: slot, error: slotErr } = await supabaseClient
             .from('slots')
             .select('pitch_id')
             .eq('id', slotId)
@@ -339,7 +339,7 @@ async function handleRecurringSubmit(e) {
         if (slotErr) throw slotErr;
         
         // Check if slot already has an active recurring booking
-        const { data: existingRecurring } = await supabase
+        const { data: existingRecurring } = await supabaseClient
             .from('recurring_bookings')
             .select('id')
             .eq('slot_id', slotId)
@@ -350,7 +350,7 @@ async function handleRecurringSubmit(e) {
         }
         
         // Create recurring booking record
-        const { data: newRecurring, error: insertErr } = await supabase
+        const { data: newRecurring, error: insertErr } = await supabaseClient
             .from('recurring_bookings')
             .insert([{
                 customer_phone: phone,
