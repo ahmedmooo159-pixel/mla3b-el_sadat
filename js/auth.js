@@ -115,30 +115,43 @@ async function handleLogout() {
 // Initialize auth listeners after DOM is ready
 // Initialize auth listeners after DOM is ready
 document.addEventListener('DOMContentLoaded', async () => {
-    if (window.supabaseClient) {
-        console.log('Supabase client loaded:', !!window.supabaseClient);
-        
-        // Get current session immediately
-        const { data: { session } } = await window.supabaseClient.auth.getSession();
-        window.currentUser = session?.user || null;
-        console.log('Current user from session:', window.currentUser);
-        
-        checkSession();
-        
-        // Listen for auth changes
-        window.supabaseClient.auth.onAuthStateChange((event, session) => {
-            window.currentUser = session?.user || null;
-            console.log('Auth state changed:', event, window.currentUser);
-            
-            if (event === 'SIGNED_OUT') {
-                const path = window.location.pathname;
-                const isProtectedRoute = path.includes('dashboard.html') || path.includes('create-pitch.html');
-                if (isProtectedRoute) {
-                    window.location.href = 'index.html';
-                }
-            }
-        });
-    } else {
-        console.error('Supabase client not loaded!');
+    if (!window.supabaseClient) {
+        console.error('Supabase client not initialized');
+        return;
     }
+    
+    console.log('DOMContentLoaded - initializing auth');
+    
+    // Get current session
+    try {
+        const { data: { session }, error: sessionError } = await window.supabaseClient.auth.getSession();
+        
+        if (sessionError) {
+            console.error('Session error:', sessionError);
+        }
+        
+        window.currentUser = session?.user || null;
+        console.log('Session loaded, currentUser:', window.currentUser);
+        
+        if (window.currentUser) {
+            checkSession();
+            console.log('User logged in, ID:', window.currentUser.id);
+        }
+    } catch (err) {
+        console.error('Error getting session:', err);
+    }
+    
+    // Listen for auth changes
+    window.supabaseClient.auth.onAuthStateChange((event, session) => {
+        window.currentUser = session?.user || null;
+        console.log('Auth state changed:', event, 'User:', window.currentUser?.id);
+        
+        if (event === 'SIGNED_OUT') {
+            const path = window.location.pathname;
+            const isProtectedRoute = path.includes('dashboard.html') || path.includes('create-pitch.html');
+            if (isProtectedRoute) {
+                window.location.href = 'index.html';
+            }
+        }
+    });
 });
