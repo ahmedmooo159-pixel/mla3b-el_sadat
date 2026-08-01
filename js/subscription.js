@@ -84,7 +84,10 @@ async function handleSubscriptionUpload(e) {
         // 2. Update pitch status to 'pending'
         const { error: updateError } = await supabaseClient
             .from('pitches')
-            .update({ subscription_status: 'pending' })
+            .update({ 
+                subscription_status: 'pending',
+                payment_proof_url: filePath
+            })
             .eq('id', pitchId)
             .eq('owner_id', currentUser.id);
             

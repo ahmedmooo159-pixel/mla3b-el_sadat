@@ -51,12 +51,12 @@ async function checkAndLoadAdmin(userId) {
     }
 }
 
-function switchTab(tabId) {
+function switchTab(tabId, btn) {
     document.querySelectorAll('.section-panel').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('.admin-nav button').forEach(el => el.classList.remove('active'));
     
     document.getElementById(tabId).classList.add('active');
-    event.currentTarget.classList.add('active');
+    if (btn) btn.classList.add('active');
 }
 
 // 1. Pending Subscriptions
@@ -64,10 +64,7 @@ async function loadPendingSubscriptions() {
     try {
         const { data: pitches, error } = await supabaseClient
             .from('pitches')
-            .select(`
-                id, name, location, price_per_hour, payment_proof_url, created_at,
-                owners (full_name, phone)
-            `)
+            .select('id, name, location, price_per_hour, payment_proof_url, created_at, owner_id, owners(full_name, phone)')
             .eq('subscription_status', 'pending')
             .order('created_at', { ascending: false });
             
@@ -98,7 +95,7 @@ async function loadPendingSubscriptions() {
                 <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
                     <div>
                         <h4 style="color: var(--primary-color); margin-bottom: 5px;">${pitch.name}</h4>
-                        <p style="font-size: 0.9rem; color: var(--text-muted);"><i data-lucide="user" style="width:14px;height:14px;"></i> ${pitch.owners?.full_name} (${pitch.owners?.phone})</p>
+                        <p style="font-size: 0.9rem; color: var(--text-muted);"><i data-lucide="user" style="width:14px;height:14px;"></i> ${pitch.owners?.full_name || 'مالك الملعب'} ${pitch.owners?.phone ? `(${pitch.owners.phone})` : ''}</p>
                         <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 5px;">تم الطلب: ${new Date(pitch.created_at).toLocaleDateString('ar-EG')}</p>
                     </div>
                     <div style="text-align: left;">
@@ -167,10 +164,7 @@ async function loadAllPitches() {
     try {
         const { data: pitches, error } = await supabaseClient
             .from('pitches')
-            .select(`
-                id, name, location, subscription_status, subscription_expires_at, created_at,
-                owners (full_name, phone)
-            `)
+            .select('id, name, location, subscription_status, subscription_expires_at, created_at, owner_id, owners(full_name, phone)')
             .order('created_at', { ascending: false });
             
         if (error) throw error;
@@ -209,7 +203,7 @@ function renderPitches(pitches) {
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                 <div>
                     <h4 style="margin-bottom: 5px;">${pitch.name}</h4>
-                    <p style="font-size: 0.85rem; color: var(--text-muted);">المالك: ${pitch.owners?.full_name} (${pitch.owners?.phone})</p>
+                    <p style="font-size: 0.85rem; color: var(--text-muted);">المالك: ${pitch.owners?.full_name || 'مالك الملعب'} ${pitch.owners?.phone ? `(${pitch.owners.phone})` : ''}</p>
                 </div>
                 <div style="text-align: left;">
                     <span style="background: ${statusColor}20; color: ${statusColor}; padding: 4px 10px; border-radius: 6px; font-size: 0.85rem; font-weight: bold; border: 1px solid ${statusColor}50;">
@@ -246,12 +240,13 @@ async function saveSettings(e) {
     try {
         const { error } = await supabaseClient
             .from('platform_settings')
-            .update({
+            .upsert({
+                id: 1,
                 vodafone_cash_number: document.getElementById('settingVCash').value,
                 instapay_link: document.getElementById('settingInstapay').value,
-                monthly_subscription_fee: parseFloat(document.getElementById('settingMonthlyFee').value)
-            })
-            .eq('id', 1);
+                monthly_subscription_fee: parseFloat(document.getElementById('settingMonthlyFee').value),
+                updated_at: new Date().toISOString()
+            }, { onConflict: ['id'] });
             
         if (error) throw error;
         

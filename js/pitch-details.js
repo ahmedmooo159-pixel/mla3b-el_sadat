@@ -52,7 +52,7 @@ async function loadPitchDetails(pitchId) {
     try {
         const { data: pitch, error } = await supabaseClient
             .from('pitches')
-            .select('*')
+            .select('*, owners(full_name, phone)')
             .eq('id', pitchId)
             .single();
 
@@ -68,6 +68,20 @@ async function loadPitchDetails(pitchId) {
             coverEl.style.backgroundImage = `url('${pitch.photos[0]}')`;
         } else {
             coverEl.style.backgroundImage = `url('https://via.placeholder.com/1200x400?text=بدون+صورة')`;
+        }
+
+        const contactLink = document.getElementById('quickContactLink');
+        if (contactLink) {
+            if (pitch.owners?.phone) {
+                contactLink.href = `tel:${pitch.owners.phone}`;
+                contactLink.textContent = `اتصل الآن: ${pitch.owners.phone}`;
+                contactLink.style.pointerEvents = 'auto';
+            } else {
+                contactLink.href = '#';
+                contactLink.textContent = 'رقم التواصل غير موجود';
+                contactLink.style.pointerEvents = 'none';
+                contactLink.style.opacity = '0.6';
+            }
         }
 
         await loadSlotsAndBookings(pitchId);
@@ -327,7 +341,8 @@ window.checkAvailability = function () {
                     ${price > 0 ? `&nbsp;|&nbsp; السعر: <strong style="color:var(--primary-color);">${price} جنيه</strong>` : ''}
                 </p>
                 <button class="btn btn-primary" style="width:100%; margin-top:15px; padding:12px;"
-                    onclick="openBookingModalFromPicker('${dateStr}','${startTime}','${endTime}','${daysMap[dayInfo.dayOfWeek]}',${JSON.stringify(slotIds)})">
+                    data-slot-ids="${escapeHtmlAttr(JSON.stringify(slotIds))}"
+                    onclick="openBookingModalFromPicker(this, '${dateStr}','${startTime}','${endTime}','${daysMap[dayInfo.dayOfWeek]}')">
                     🚀 احجز دلوقتي
                 </button>
             </div>`;
@@ -377,10 +392,15 @@ window.checkAvailability = function () {
 // ==========================================
 // BOOKING MODAL — from time picker
 // ==========================================
-window.openBookingModalFromPicker = function (dateStr, startTime, endTime, dayName, slotIds) {
+function escapeHtmlAttr(str) {
+    return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+window.openBookingModalFromPicker = function (button, dateStr, startTime, endTime, dayName) {
+    const slotIds = JSON.parse(button.dataset.slotIds || '[]');
     window._pickerBookingData = { dateStr, startTime, endTime, slotIds };
     const displayDate = new Date(dateStr + 'T00:00:00').toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' });
-    document.getElementById('modalSlotId').value = slotIds[0];
+    document.getElementById('modalSlotId').value = slotIds[0] || '';
     document.getElementById('modalBookingDate').value = dateStr;
     document.getElementById('bookingSlotInfo').innerHTML = `
         <i data-lucide="calendar" style="width:16px;height:16px;vertical-align:middle;"></i>

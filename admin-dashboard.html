@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>إدارة المنصة الرئيسية | ملاعب مصر</title>
+    <title>إدارة المنصة الرئيسية | ملاعب مدينة السادات</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -56,9 +56,9 @@
                 </div>
                 
                 <div class="admin-nav">
-                    <button class="active" onclick="switchTab('subscriptions')"><i data-lucide="credit-card" style="width:18px; height:18px; vertical-align:middle;"></i> الاشتراكات المعلقة</button>
-                    <button onclick="switchTab('pitches')"><i data-lucide="map" style="width:18px; height:18px; vertical-align:middle;"></i> كل الملاعب</button>
-                    <button onclick="switchTab('settings')"><i data-lucide="settings" style="width:18px; height:18px; vertical-align:middle;"></i> إعدادات المنصة</button>
+                    <button class="active" onclick="switchTab('subscriptions', this)"><i data-lucide="credit-card" style="width:18px; height:18px; vertical-align:middle;"></i> الاشتراكات المعلقة</button>
+                    <button onclick="switchTab('pitches', this)"><i data-lucide="map" style="width:18px; height:18px; vertical-align:middle;"></i> كل الملاعب</button>
+                    <button onclick="switchTab('settings', this)"><i data-lucide="settings" style="width:18px; height:18px; vertical-align:middle;"></i> إعدادات المنصة</button>
                 </div>
                 
                 <!-- Subscriptions Tab -->
@@ -120,6 +120,10 @@
     <script src="js/supabase.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/admin-dashboard.js"></script>
+
+    <footer class="site-footer" style="padding:20px 0; text-align:center; color:var(--text-muted); font-size:0.9rem;">
+        تم تصميم وتطوير الموقع ل أحمد مراد
+    </footer>
 
     <script>
         if ('serviceWorker' in navigator) {
