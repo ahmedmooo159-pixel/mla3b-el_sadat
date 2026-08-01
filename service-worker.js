@@ -57,8 +57,8 @@ self.addEventListener('fetch', event => {
         }
 
         return fetch(event.request).then(response => {
-          // Don't cache non-successful responses
-          if (!response || response.status !== 200 || response.type === 'error') {
+          // Don't cache non-successful responses or unsupported schemes
+          if (!response || response.status !== 200 || response.type === 'error' || !event.request.url.startsWith('http')) {
             return response;
           }
 
