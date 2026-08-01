@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>تسجيل الدخول للمالكين</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/lucide@0.263.1"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0"></script>
     <link rel="stylesheet" href="css/style.css">
 
@@ -44,13 +44,19 @@
         </main>
     </div>
 
-    <!-- ترتيب الـ scripts: 1. Supabase 2. Auth 3. الـ inline logic -->
+    <!-- ترتيب الـ scripts: 1. Supabase 2. Auth 3. الـ Logic -->
     <script src="js/supabase.js"></script>
     <script src="js/auth.js"></script>
-
+    
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            lucide.createIcons();
+        // استنى شوية عشان auth.js تتحمّل تماماً
+        window.addEventListener('load', () => {
+            console.log('Page loaded');
+            console.log('handleLogin exists?', typeof handleLogin);
+            
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
             
             const form = document.getElementById('loginForm');
             if (!form) {
@@ -60,8 +66,8 @@
             
             form.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                const email = document.getElementById('email').value;
-                const password = document.getElementById('password').value;
+                const email = document.getElementById('email').value.trim();
+                const password = document.getElementById('password').value.trim();
                 
                 if (!email || !password) {
                     const errorDiv = document.getElementById('authError');
@@ -71,8 +77,16 @@
                     return;
                 }
                 
-                // handleLogin موجودة من auth.js
-                await handleLogin(email, password);
+                // استخدم handleLogin من auth.js
+                if (typeof handleLogin === 'function') {
+                    await handleLogin(email, password);
+                } else {
+                    console.error('handleLogin function not found');
+                    const errorDiv = document.getElementById('authError');
+                    if (errorDiv) {
+                        errorDiv.textContent = 'خطأ: لم يتم تحميل دالة الدخول';
+                    }
+                }
             });
         });
     </script>
