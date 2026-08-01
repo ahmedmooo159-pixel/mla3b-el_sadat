@@ -60,3 +60,40 @@ setTimeout(() => {
         initializeSupabase();
     }
 }, 5000);
+
+// Global floating banner for pending bookings
+function checkPendingBooking() {
+    const pending = localStorage.getItem('pending_booking');
+    if (!pending) return;
+    
+    try {
+        const booking = JSON.parse(pending);
+        const now = new Date();
+        const expiresAt = new Date(booking.expiresAt);
+        const minsLeft = Math.ceil((expiresAt - now) / 60000);
+        
+        if (minsLeft > 0 && minsLeft <= 10) {
+            // Create a floating top banner
+            const banner = document.createElement('div');
+            banner.id = 'pendingBookingBanner';
+            banner.style.cssText = 'background: linear-gradient(90deg, #f59e0b, #d97706); color: #000; padding: 12px 20px; text-align: center; font-weight: bold; position: fixed; top: 0; left: 0; right: 0; z-index: 99999; display: flex; justify-content: center; align-items: center; gap: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); font-family: Cairo, sans-serif;';
+            banner.innerHTML = `
+                <span>⚠️ عندك حجز مؤقت لـ "${booking.pitchName}"! ارفع الإيصال قبل ما الـ 10 دقايق يخلصوا (متبقي ${minsLeft} دقائق)</span>
+                <a href="pay-booking.html?id=${booking.id}" style="background: #000; color: #fff; padding: 6px 12px; border-radius: 8px; text-decoration: none; font-size: 0.85rem; transition: all 0.3s; white-space: nowrap;">اضغط هنا لرفع الإيصال 🚀</a>
+            `;
+            
+            document.body.style.paddingTop = '50px';
+            document.body.appendChild(banner);
+        } else {
+            // Expired, clear it
+            localStorage.removeItem('pending_booking');
+        }
+    } catch (e) {
+        localStorage.removeItem('pending_booking');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Run after a short delay so layout stabilizes
+    setTimeout(checkPendingBooking, 500);
+});

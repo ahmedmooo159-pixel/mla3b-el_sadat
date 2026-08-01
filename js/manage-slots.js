@@ -61,6 +61,11 @@ async function verifyOwnershipAndLoad(pitchId) {
     }
 }
 
+function timeStrToMins(timeStr) {
+    const [h, m] = timeStr.split(':').map(Number);
+    return h * 60 + m;
+}
+
 async function loadSlots(pitchId) {
     const listDiv = document.getElementById('slotsList');
     const loading = document.getElementById('loadingIndicator');
@@ -86,8 +91,16 @@ async function loadSlots(pitchId) {
             return;
         }
         
-        // For each slot, check if it has manual booking for today/this week
-        await renderSlots(slots);
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        const { data: bookings, error: bErr } = await supabaseClient
+            .from('bookings')
+            .select('*')
+            .eq('pitch_id', pitchId)
+            .gte('booking_date', todayStr);
+
+        await renderSlots(slots, bookings || []);
+        await loadBookingsList(pitchId, bookings || []);
         loading.style.display = 'none';
         
     } catch (error) {
@@ -116,47 +129,56 @@ function getNextDateForDay(dayOfWeek) {
     return `${y}-${m}-${day}`;
 }
 
-async function renderSlots(slots) {
+async function renderSlots(slots, bookings) {
     const listDiv = document.getElementById('slotsList');
     listDiv.innerHTML = '';
     
-    // Fetch manual bookings for all slots (upcoming)
-    const slotIds = slots.map(s => s.id);
-    const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
-    
-    const { data: manualBookings } = await supabaseClient
-        .from('bookings')
-        .select('slot_id, booking_date, id, notes, status')
-        .in('slot_id', slotIds)
-        .eq('source', 'manual')
-        .in('status', ['confirmed'])
-        .gte('booking_date', todayStr);
-    
-    const manualMap = {};
-    (manualBookings || []).forEach(b => {
-        const key = `${b.slot_id}_${b.booking_date}`;
-        manualMap[key] = b;
+    const now = new Date();
+    const activeBookings = bookings.filter(b => {
+        if (b.status === 'rejected' || b.status === 'cancelled') return false;
+        if (b.status === 'pending_payment' && (now - new Date(b.created_at)) / 60000 > 10) return false;
+        return true;
     });
     
     slots.forEach(slot => {
         const nextDate = getNextDateForDay(slot.day_of_week);
-        const key = `${slot.id}_${nextDate}`;
-        const manualBooking = manualMap[key];
-        const isManualBooked = !!manualBooking;
+        const slotStart = timeStrToMins(slot.start_time);
+        const slotEnd = timeStrToMins(slot.end_time);
+
+        const booking = activeBookings.find(b => {
+            if (b.booking_date !== nextDate) return false;
+            
+            let bs = 0, be = 0;
+            if (b.start_time && b.end_time) {
+                bs = timeStrToMins(b.start_time);
+                be = timeStrToMins(b.end_time);
+            } else if (b.slot_id === slot.id) {
+                bs = slotStart;
+                be = slotEnd;
+            } else {
+                return false;
+            }
+            return bs < slotEnd && be > slotStart;
+        });
+
+        const isBooked = !!booking;
         
         const el = document.createElement('div');
-        el.className = `slot-card${isManualBooked ? ' manual-booked' : ''}`;
+        el.className = `slot-card${isBooked ? ' manual-booked' : ''}`;
         
-        const statusBadge = isManualBooked
-            ? `<span class="status-badge" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b;">محجوز يدوياً</span>`
-            : `<span class="status-badge">متاح</span>`;
+        let labelText = 'متاح';
+        let statusStyle = '';
+        if (isBooked) {
+            labelText = booking.source === 'manual' ? 'محجوز يدوياً' : 'محجوز أونلاين';
+            statusStyle = 'background: rgba(245, 158, 11, 0.2); color: #f59e0b;';
+        }
+        const statusBadge = `<span class="status-badge" style="${statusStyle}">${labelText}</span>`;
         
-        const actionBtn = isManualBooked
-            ? `<button class="release-btn" onclick="releaseManualBooking('${manualBooking.id}', '${slot.id}')">
+        const actionBtn = isBooked
+            ? `<button class="release-btn" onclick="releaseManualBooking('${booking.id}', '${slot.id}')">
                  🔓 فك القفل وإتاحة الموعد
                </button>`
-            : `<button class="manual-book-btn" onclick="openManualModal('${slot.id}', '${nextDate}', '${daysMap[slot.day_of_week]}', '${formatTimeDisplay(slot.start_time)}', '${formatTimeDisplay(slot.end_time)}')">
+            : `<button class="manual-book-btn" onclick="openManualModal('${slot.id}', '${nextDate}', '${daysMap[slot.day_of_week]}', '${formatTimeDisplay(slot.start_time)}', '${formatTimeDisplay(slot.end_time)}', '${slot.start_time}', '${slot.end_time}')">
                  📋 حجز يدوي (كاش/تليفون)
                </button>`;
         
@@ -167,7 +189,8 @@ async function renderSlots(slots) {
                 ${formatTimeDisplay(slot.start_time)} - ${formatTimeDisplay(slot.end_time)}
             </div>
             <div style="margin-top: 8px;">${statusBadge}</div>
-            ${isManualBooked && manualBooking.notes ? `<p style="font-size:0.8rem; color:var(--text-muted); margin-top:5px;">${manualBooking.notes}</p>` : ''}
+            ${isBooked && booking.notes ? `<p style="font-size:0.8rem; color:var(--text-muted); margin-top:5px;">${booking.notes}</p>` : ''}
+            ${isBooked && booking.customer_name && booking.source !== 'manual' ? `<p style="font-size:0.8rem; color:var(--text-muted); margin-top:5px;">العميل: ${booking.customer_name}</p>` : ''}
             ${actionBtn}
             <button class="delete-btn" onclick="deleteSlot('${slot.id}')" title="حذف الموعد">
                 <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
@@ -180,10 +203,77 @@ async function renderSlots(slots) {
     lucide.createIcons();
 }
 
+// Render bookings list at the bottom of the page
+async function loadBookingsList(pitchId, bookings) {
+    const container = document.getElementById('bookingsListContainer');
+    if (!container) return;
+    
+    const now = new Date();
+    const activeBookings = bookings.filter(b => {
+        if (b.status === 'rejected' || b.status === 'cancelled') return false;
+        if (b.status === 'pending_payment' && (now - new Date(b.created_at)) / 60000 > 10) return false;
+        return true;
+    });
+    
+    // Sort bookings by date and time
+    activeBookings.sort((a, b) => {
+        const dateDiff = a.booking_date.localeCompare(b.booking_date);
+        if (dateDiff !== 0) return dateDiff;
+        const aStart = a.start_time || '';
+        const bStart = b.start_time || '';
+        return aStart.localeCompare(bStart);
+    });
+    
+    if (activeBookings.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state" style="padding: 30px;">
+                <i data-lucide="inbox"></i>
+                <p>مفيش أي حجوزات مؤكدة أو معلقة حالياً.</p>
+            </div>`;
+        lucide.createIcons();
+        return;
+    }
+    
+    container.innerHTML = '';
+    activeBookings.forEach(b => {
+        const bookingDate = new Date(b.booking_date + 'T00:00:00').toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        
+        let timeStr = 'ميعاد غير محدد';
+        if (b.start_time && b.end_time) {
+            timeStr = `${formatTimeDisplay(b.start_time)} - ${formatTimeDisplay(b.end_time)}`;
+        }
+            
+        const statusLabel = b.status === 'confirmed' ? 'مؤكد ✅' : 'في انتظار الدفع (مؤقت)';
+        const statusColor = b.status === 'confirmed' ? '#10b981' : '#f59e0b';
+        const sourceLabel = b.source === 'manual' ? 'حجز يدوي' : 'حجز أونلاين';
+        
+        const card = document.createElement('div');
+        card.style.cssText = 'background: rgba(15, 23, 42, 0.4); border: 1px solid var(--border-color); border-radius: 12px; padding: 15px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px;';
+        card.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 5px;">
+                <strong style="color: var(--primary-color); font-size: 1rem;">${b.customer_name || 'عميل'}</strong>
+                <span style="background: ${statusColor}20; color: ${statusColor}; padding: 3px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: bold; border: 1px solid ${statusColor}50;">
+                    ${statusLabel}
+                </span>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.85rem; color: var(--text-light);">
+                <p>📞 <strong>رقم الهاتف:</strong> ${b.customer_phone}</p>
+                <p>📅 <strong>التاريخ:</strong> ${bookingDate}</p>
+                <p>⏰ <strong>الوقت:</strong> ${timeStr}</p>
+                <p>ℹ️ <strong>النوع:</strong> ${sourceLabel} ${b.notes ? `(${b.notes})` : ''}</p>
+            </div>
+        `;
+        container.appendChild(card);
+    });
+    lucide.createIcons();
+}
+
 // Manual Booking Modal
-window.openManualModal = function(slotId, dateStr, dayName, startTime, endTime) {
+window.openManualModal = function(slotId, dateStr, dayName, startTime, endTime, rawStart, rawEnd) {
     document.getElementById('manualSlotId').value = slotId;
     document.getElementById('manualBookingDate').value = dateStr;
+    window._manualStartTime = rawStart;
+    window._manualEndTime = rawEnd;
     document.getElementById('manualSlotInfo').textContent = `${dayName} — ${startTime} إلى ${endTime} (${dateStr})`;
     document.getElementById('manualBookingModal').style.display = 'flex';
 };
@@ -210,8 +300,11 @@ async function handleManualBooking(e) {
         const { error } = await supabaseClient
             .from('bookings')
             .insert([{
+                pitch_id: currentPitchId,
                 slot_id: slotId,
                 booking_date: bookingDate,
+                start_time: window._manualStartTime || null,
+                end_time: window._manualEndTime || null,
                 customer_name: notes || 'حجز يدوي',
                 customer_phone: '00000000000',
                 status: 'confirmed',

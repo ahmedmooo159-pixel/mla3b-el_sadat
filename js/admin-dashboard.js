@@ -82,11 +82,7 @@ async function loadPendingSubscriptions() {
         pitches.forEach(pitch => {
             let receiptBtn = '';
             if (pitch.payment_proof_url) {
-                const { data: publicUrlData } = supabaseClient.storage
-                    .from('payment_proofs')
-                    .getPublicUrl(pitch.payment_proof_url);
-                const url = publicUrlData.publicUrl;
-                receiptBtn = `<button class="btn btn-outline" style="margin-bottom: 10px; width: 100%; border-color: #8b5cf6; color: #8b5cf6;" onclick="viewReceipt('${url}')"><i data-lucide="image"></i> عرض إيصال الدفع</button>`;
+                receiptBtn = `<button class="btn btn-outline" style="margin-bottom: 10px; width: 100%; border-color: #8b5cf6; color: #8b5cf6;" onclick="viewReceiptForPitch('${pitch.payment_proof_url}')"><i data-lucide="image"></i> عرض إيصال الدفع</button>`;
             }
             
             const el = document.createElement('div');
@@ -112,6 +108,20 @@ async function loadPendingSubscriptions() {
         console.error("Error loading pending:", err);
     }
 }
+
+async function viewReceiptForPitch(filePath) {
+    try {
+        const { data, error } = await supabaseClient.storage
+            .from('payment_proofs')
+            .createSignedUrl(filePath, 3600);
+            
+        if (error) throw error;
+        viewReceipt(data.signedUrl);
+    } catch (err) {
+        alert('فشل تحميل الإيصال: ' + err.message);
+    }
+}
+window.viewReceiptForPitch = viewReceiptForPitch;
 
 async function activateSubscription(pitchId, btnEl) {
     if (!confirm('تأكيد تفعيل الاشتراك لهذا الملعب؟')) return;

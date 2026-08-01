@@ -129,6 +129,8 @@ async function handleReceiptUpload(e, bookingId) {
             
         if (updateError) throw new Error("تم الرفع ولكن حدث خطأ في تحديث الحجز: " + updateError.message);
         
+        localStorage.removeItem('pending_booking');
+        
         document.getElementById('paymentContent').style.display = 'none';
         document.getElementById('successContent').style.display = 'block';
         

@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const recurringForm = document.getElementById('recurringForm');
     if (recurringForm) recurringForm.addEventListener('submit', handleRecurringSubmit);
 
-    // Day picker change
+    // Day picker change - reset start/end and rebuild start options
     document.getElementById('pickerDay').addEventListener('change', () => {
         const dateStr = document.getElementById('pickerDay').value;
         document.getElementById('pickerStart').innerHTML = '<option value="">-- بداية --</option>';
@@ -36,10 +36,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (dateStr) buildStartPicker(dateStr);
     });
 
+    // Start picker change - build end options then check availability
     document.getElementById('pickerStart').addEventListener('change', () => {
+        document.getElementById('pickerEnd').innerHTML = '<option value="">-- نهاية --</option>';
+        document.getElementById('availabilityResult').style.display = 'none';
         buildEndPicker();
-        checkAvailability();
     });
+    
+    // End picker change handled via onchange="checkAvailability()" in HTML
 });
 
 // ==========================================
@@ -141,8 +145,8 @@ async function loadSlotsAndBookings(pitchId) {
     const slotIds = slots.map(s => s.id);
     const { data: bookings } = await supabaseClient
         .from('bookings')
-        .select('slot_id, booking_date, status, created_at, id')
-        .in('slot_id', slotIds)
+        .select('id, slot_id, pitch_id, booking_date, start_time, end_time, status, created_at')
+        .eq('pitch_id', pitchId)
         .gte('booking_date', _next7Days[0].dateStr)
         .lte('booking_date', _next7Days[6].dateStr);
 
@@ -176,82 +180,41 @@ function buildDayPicker() {
 // START TIME PICKER
 // ==========================================
 function buildStartPicker(dateStr) {
-    const dayInfo = _next7Days.find(d => d.dateStr === dateStr);
-    if (!dayInfo) return;
-
-    const daySlots = _allSlots.filter(s => s.day_of_week === dayInfo.dayOfWeek);
-    const times = new Set();
-
-    daySlots.forEach(s => {
-        const [sh, sm] = s.start_time.split(':').map(Number);
-        const [eh, em] = s.end_time.split(':').map(Number);
-        let cur = sh * 60 + sm;
-        const end = eh * 60 + em;
-        while (cur < end) {
-            times.add(cur);
-            cur += 30;
-        }
-    });
+    const startSel = document.getElementById('pickerStart');
+    startSel.innerHTML = '<option value="">-- بداية --</option>';
 
     const now = new Date();
     const nowMins = now.getHours() * 60 + now.getMinutes();
     const isToday = dateStr === _next7Days[0].dateStr;
-    const startSel = document.getElementById('pickerStart');
-    startSel.innerHTML = '<option value="">-- بداية --</option>';
 
-    Array.from(times).sort((a, b) => a - b).forEach(mins => {
-        if (isToday && mins <= nowMins) return;
+    for (let mins = 0; mins < 24 * 60; mins += 30) {
+        if (isToday && mins <= nowMins) continue;
         const timeStr = minsToTimeStr(mins);
         const opt = document.createElement('option');
         opt.value = timeStr;
         opt.textContent = formatArabicTime(timeStr);
         startSel.appendChild(opt);
-    });
+    }
 }
 
 // ==========================================
 // END TIME PICKER
 // ==========================================
 function buildEndPicker() {
-    const dateStr = document.getElementById('pickerDay').value;
     const startTime = document.getElementById('pickerStart').value;
     const endSel = document.getElementById('pickerEnd');
     endSel.innerHTML = '<option value="">-- نهاية --</option>';
 
-    if (!dateStr || !startTime) return;
+    if (!startTime) return;
 
-    const dayInfo = _next7Days.find(d => d.dateStr === dateStr);
-    if (!dayInfo) return;
-
-    const daySlots = _allSlots.filter(s => s.day_of_week === dayInfo.dayOfWeek);
     const startMins = timeStrToMins(startTime);
-
-    // Find the furthest contiguous end we can reach from startMins
-    let maxEnd = 0;
-    daySlots.forEach(s => {
-        const slotStart = timeStrToMins(s.start_time);
-        const slotEnd = timeStrToMins(s.end_time);
-        if (slotStart <= startMins && startMins < slotEnd) {
-            maxEnd = Math.max(maxEnd, slotEnd);
-        }
-    });
-
-    if (maxEnd <= startMins) return;
-
-    const times = new Set();
-    let cur = startMins + 30;
-    while (cur <= maxEnd) {
-        times.add(cur);
-        cur += 30;
-    }
-
-    Array.from(times).sort((a, b) => a - b).forEach(mins => {
+    for (let mins = startMins + 30; mins <= 24 * 60; mins += 30) {
         const timeStr = minsToTimeStr(mins);
         const opt = document.createElement('option');
         opt.value = timeStr;
         opt.textContent = formatArabicTime(timeStr);
         endSel.appendChild(opt);
-    });
+    }
 }
 
 // ==========================================
@@ -275,60 +238,79 @@ window.checkAvailability = function () {
     const dayInfo = _next7Days.find(d => d.dateStr === dateStr);
     if (!dayInfo) return;
 
-    const now = new Date();
-
-    // Collect overlapping slots
-    const overlapping = _allSlots.filter(s => {
-        if (s.day_of_week !== dayInfo.dayOfWeek) return false;
-        const ss = timeStrToMins(s.start_time);
-        const se = timeStrToMins(s.end_time);
-        return ss < endMins && se > startMins;
-    });
-
+    const daySlots = _allSlots.filter(s => s.day_of_week === dayInfo.dayOfWeek);
     resultDiv.style.display = 'block';
 
-    if (overlapping.length === 0) {
+    if (daySlots.length === 0) {
         resultDiv.innerHTML = `
             <div style="background:rgba(239,68,68,0.1); border:1px solid #ef4444; border-radius:12px; padding:15px;">
-                <p style="color:#ef4444; font-weight:bold;">❌ هذا الوقت خارج ساعات عمل الملعب</p>
-                <p style="color:var(--text-muted); font-size:0.9rem; margin-top:5px;">اختار وقتاً من الأوقات المتاحة في القوائم أعلاه</p>
+                <p style="color:#ef4444; font-weight:bold;">❌ الملعب مغلق في هذا اليوم</p>
             </div>`;
         return;
     }
 
-    // Check each 30-min chunk for conflicts
-    const conflicts = [];
-    let checkMins = startMins;
-    while (checkMins < endMins) {
-        const coverSlot = overlapping.find(s => {
+    // Helper: check if a 30-min block is inside working hours
+    function isInsideWorkingHours(mins) {
+        return daySlots.some(s => {
             const ss = timeStrToMins(s.start_time);
             const se = timeStrToMins(s.end_time);
-            return ss <= checkMins && checkMins < se;
+            return ss <= mins && (mins + 30) <= se;
         });
+    }
 
-        if (coverSlot) {
-            const isBooked = _allBookings.some(b => {
-                if (b.slot_id !== coverSlot.id || b.booking_date !== dateStr) return false;
-                if (b.status === 'confirmed') return true;
-                if (b.status === 'pending_payment') {
-                    return (now - new Date(b.created_at)) / 60000 <= 10;
-                }
+    // Helper: check if a 30-min block is booked
+    const now = new Date();
+    function isBlockBooked(mins) {
+        return _allBookings.some(b => {
+            if (b.booking_date !== dateStr) return false;
+            if (b.status === 'rejected' || b.status === 'cancelled') return false;
+            if (b.status === 'pending_payment' && (now - new Date(b.created_at)) / 60000 > 10) return false;
+            
+            let bs = 0, be = 0;
+            if (b.start_time && b.end_time) {
+                bs = timeStrToMins(b.start_time);
+                be = timeStrToMins(b.end_time);
+            } else if (b.slot_id) {
+                const slot = _allSlots.find(s => s.id === b.slot_id);
+                if (!slot) return false;
+                bs = timeStrToMins(slot.start_time);
+                be = timeStrToMins(slot.end_time);
+            } else {
                 return false;
-            });
-
-            if (isBooked) {
-                const slotEnd = timeStrToMins(coverSlot.end_time);
-                conflicts.push(slotEnd);
-                checkMins = slotEnd;
-                continue;
             }
+            return bs <= mins && (mins + 30) <= be;
+        });
+    }
+
+    // Check if the requested range is inside working hours
+    let outOfHours = false;
+    for (let m = startMins; m < endMins; m += 30) {
+        if (!isInsideWorkingHours(m)) {
+            outOfHours = true;
+            break;
         }
-        checkMins += 30;
+    }
+
+    if (outOfHours) {
+        const workingHoursStr = daySlots.map(s => `${formatArabicTime(s.start_time)} - ${formatArabicTime(s.end_time)}`).join('، ');
+        resultDiv.innerHTML = `
+            <div style="background:rgba(239,68,68,0.1); border:1px solid #ef4444; border-radius:12px; padding:15px;">
+                <p style="color:#ef4444; font-weight:bold;">❌ هذا الوقت خارج ساعات عمل الملعب</p>
+                <p style="color:var(--text-muted); font-size:0.9rem; margin-top:5px;">ساعات العمل المتاحة: ${workingHoursStr}</p>
+            </div>`;
+        return;
+    }
+
+    // Check conflicts
+    const conflicts = [];
+    for (let m = startMins; m < endMins; m += 30) {
+        if (isBlockBooked(m)) {
+            conflicts.push(m);
+        }
     }
 
     if (conflicts.length === 0) {
         // ✅ Fully available
-        const slotIds = overlapping.map(s => s.id);
         const hours = ((endMins - startMins) / 60).toFixed(1).replace('.0', '');
         const price = Math.round((endMins - startMins) / 60 * (window._pitchPrice || 0));
 
@@ -341,40 +323,57 @@ window.checkAvailability = function () {
                     ${price > 0 ? `&nbsp;|&nbsp; السعر: <strong style="color:var(--primary-color);">${price} جنيه</strong>` : ''}
                 </p>
                 <button class="btn btn-primary" style="width:100%; margin-top:15px; padding:12px;"
-                    data-slot-ids="${escapeHtmlAttr(JSON.stringify(slotIds))}"
-                    onclick="openBookingModalFromPicker(this, '${dateStr}','${startTime}','${endTime}','${daysMap[dayInfo.dayOfWeek]}')">
+                    onclick="openBookingModalFromPicker('${dateStr}','${startTime}','${endTime}','${daysMap[dayInfo.dayOfWeek]}')">
                     🚀 احجز دلوقتي
                 </button>
             </div>`;
     } else {
-        // ⚠️ Conflict — show when it ends + alternatives
-        const maxConflictEnd = Math.max(...conflicts);
-        const maxConflictEndStr = minsToTimeStr(maxConflictEnd);
-
-        const daySlots = _allSlots.filter(s => s.day_of_week === dayInfo.dayOfWeek);
-        const availableAfter = [];
-        daySlots.forEach(slot => {
-            const ss = timeStrToMins(slot.start_time);
-            const se = timeStrToMins(slot.end_time);
-            if (ss >= maxConflictEnd) {
-                const booked = _allBookings.some(b => {
-                    if (b.slot_id !== slot.id || b.booking_date !== dateStr) return false;
-                    if (b.status === 'confirmed') return true;
-                    if (b.status === 'pending_payment') return (now - new Date(b.created_at)) / 60000 <= 10;
-                    return false;
-                });
-                if (!booked) availableAfter.push(`${formatArabicTime(slot.start_time)} – ${formatArabicTime(slot.end_time)}`);
+        // ⚠️ Conflict — find the max booking end time that overlaps with the request
+        let maxConflictEnd = 0;
+        _allBookings.forEach(b => {
+            if (b.booking_date !== dateStr) return;
+            if (b.status === 'rejected' || b.status === 'cancelled') return;
+            if (b.status === 'pending_payment' && (now - new Date(b.created_at)) / 60000 > 10) return;
+            
+            let bs = 0, be = 0;
+            if (b.start_time && b.end_time) {
+                bs = timeStrToMins(b.start_time);
+                be = timeStrToMins(b.end_time);
+            } else if (b.slot_id) {
+                const slot = _allSlots.find(s => s.id === b.slot_id);
+                if (slot) {
+                    bs = timeStrToMins(slot.start_time);
+                    be = timeStrToMins(slot.end_time);
+                }
+            }
+            
+            if (bs < endMins && be > startMins) {
+                if (be > maxConflictEnd) maxConflictEnd = be;
             }
         });
 
-        const altHTML = availableAfter.length > 0
-            ? `<div style="margin-top:12px; padding-top:12px; border-top:1px solid rgba(245,158,11,0.3);">
-                <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:6px;">📅 المواعيد المتاحة بعده في نفس اليوم:</p>
-                <div style="display:flex; flex-wrap:wrap; gap:8px;">
-                    ${availableAfter.map(t => `<span style="background:rgba(34,197,94,0.15); color:var(--primary-color); padding:4px 10px; border-radius:8px; font-size:0.85rem;">${t}</span>`).join('')}
-                </div>
-               </div>`
-            : `<p style="margin-top:10px; font-size:0.85rem; color:var(--text-muted);">لا توجد مواعيد أخرى متاحة في هذا اليوم.</p>`;
+        const maxConflictEndStr = minsToTimeStr(maxConflictEnd);
+
+        // Calculate all free blocks for this day to show alternatives
+        const freeIntervals = [];
+        let currentFreeStart = null;
+        for (let m = 0; m < 24 * 60; m += 30) {
+            if (isInsideWorkingHours(m) && !isBlockBooked(m)) {
+                if (currentFreeStart === null) currentFreeStart = m;
+            } else {
+                if (currentFreeStart !== null) {
+                    freeIntervals.push({ start: currentFreeStart, end: m });
+                    currentFreeStart = null;
+                }
+            }
+        }
+        if (currentFreeStart !== null) {
+            freeIntervals.push({ start: currentFreeStart, end: 24 * 60 });
+        }
+
+        const freeTimesStr = freeIntervals.map(interval => 
+            `${formatArabicTime(minsToTimeStr(interval.start))} – ${formatArabicTime(minsToTimeStr(interval.end))}`
+        ).join('، ');
 
         resultDiv.innerHTML = `
             <div style="background:rgba(245,158,11,0.1); border:1px solid #f59e0b; border-radius:12px; padding:20px;">
@@ -382,7 +381,10 @@ window.checkAvailability = function () {
                 <p style="color:var(--text-muted); font-size:0.9rem;">
                     الحجز الموجود هيخلص الساعة <strong style="color:#f59e0b;">${formatArabicTime(maxConflictEndStr)}</strong>
                 </p>
-                ${altHTML}
+                <div style="margin-top:12px; padding-top:12px; border-top:1px solid rgba(245,158,11,0.3);">
+                    <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:6px;">📅 الفترات الفاضية المتاحة في هذا اليوم:</p>
+                    <p style="color:var(--primary-color); font-weight:bold; font-size:0.9rem;">${freeTimesStr || 'لا توجد مواعيد متاحة في هذا اليوم.'}</p>
+                </div>
             </div>`;
     }
 
@@ -392,15 +394,10 @@ window.checkAvailability = function () {
 // ==========================================
 // BOOKING MODAL — from time picker
 // ==========================================
-function escapeHtmlAttr(str) {
-    return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
-window.openBookingModalFromPicker = function (button, dateStr, startTime, endTime, dayName) {
-    const slotIds = JSON.parse(button.dataset.slotIds || '[]');
-    window._pickerBookingData = { dateStr, startTime, endTime, slotIds };
+window.openBookingModalFromPicker = function (dateStr, startTime, endTime, dayName) {
+    window._pickerBookingData = { dateStr, startTime, endTime };
     const displayDate = new Date(dateStr + 'T00:00:00').toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' });
-    document.getElementById('modalSlotId').value = slotIds[0] || '';
+    document.getElementById('modalSlotId').value = '';
     document.getElementById('modalBookingDate').value = dateStr;
     document.getElementById('bookingSlotInfo').innerHTML = `
         <i data-lucide="calendar" style="width:16px;height:16px;vertical-align:middle;"></i>
@@ -414,7 +411,7 @@ window.openBookingModalFromPicker = function (button, dateStr, startTime, endTim
 
 // BOOKING MODAL — from slots grid
 function openBookingModal(slotId, dateStr, dayName, displayDate, startTime, endTime) {
-    window._pickerBookingData = null;
+    window._pickerBookingData = { dateStr, startTime, endTime, slotId };
     document.getElementById('modalSlotId').value = slotId;
     document.getElementById('modalBookingDate').value = dateStr;
     document.getElementById('bookingSlotInfo').innerHTML = `
@@ -437,7 +434,7 @@ async function handleBookingSubmit(e) {
     e.preventDefault();
     const btn = document.getElementById('confirmBookingBtn');
     const errorDiv = document.getElementById('bookingError');
-    const slotId = document.getElementById('modalSlotId').value;
+    const slotId = document.getElementById('modalSlotId').value || null;
     const bookingDate = document.getElementById('modalBookingDate').value;
     const name = document.getElementById('customerName').value.trim();
     const phone = document.getElementById('customerPhone').value.trim();
@@ -449,29 +446,76 @@ async function handleBookingSubmit(e) {
     btn.innerHTML = 'جاري تأكيد الحجز...';
 
     try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const pitchId = urlParams.get('id');
+
+        const startTime = window._pickerBookingData ? window._pickerBookingData.startTime : null;
+        const endTime = window._pickerBookingData ? window._pickerBookingData.endTime : null;
+
+        if (!pitchId) throw new Error("معرف الملعب غير موجود.");
+
+        // Check availability on server side via get bookings check
         const { data: existing } = await supabaseClient
             .from('bookings')
-            .select('id, status, created_at')
-            .eq('slot_id', slotId)
+            .select('id, status, created_at, start_time, end_time, slot_id')
+            .eq('pitch_id', pitchId)
             .eq('booking_date', bookingDate);
 
-        if (existing && existing.length > 0) {
-            const now = new Date();
-            const blocked = existing.some(b => {
-                if (b.status === 'confirmed') return true;
-                if (b.status === 'pending_payment') return (now - new Date(b.created_at)) / 60000 <= 10;
+        const startMins = timeStrToMins(startTime);
+        const endMins = timeStrToMins(endTime);
+        const now = new Date();
+
+        const isOverlapping = (existing || []).some(b => {
+            if (b.status === 'rejected' || b.status === 'cancelled') return false;
+            if (b.status === 'pending_payment' && (now - new Date(b.created_at)) / 60000 > 10) return false;
+
+            let bs = 0, be = 0;
+            if (b.start_time && b.end_time) {
+                bs = timeStrToMins(b.start_time);
+                be = timeStrToMins(b.end_time);
+            } else if (b.slot_id) {
+                const slot = _allSlots.find(s => s.id === b.slot_id);
+                if (!slot) return false;
+                bs = timeStrToMins(slot.start_time);
+                be = timeStrToMins(slot.end_time);
+            } else {
                 return false;
-            });
-            if (blocked) throw new Error("عذراً، لقد قام شخص آخر بحجز هذا الموعد للتو. يرجى اختيار موعد آخر.");
+            }
+
+            return bs < endMins && be > startMins;
+        });
+
+        if (isOverlapping) {
+            throw new Error("عذراً، لقد قام شخص آخر بحجز هذا الموعد للتو. يرجى اختيار موعد آخر.");
         }
 
         const { data: newBooking, error: insertErr } = await supabaseClient
             .from('bookings')
-            .insert([{ slot_id: slotId, booking_date: bookingDate, customer_name: name, customer_phone: phone, status: 'pending_payment', source: 'online' }])
+            .insert([{ 
+                pitch_id: pitchId, 
+                slot_id: slotId, 
+                booking_date: bookingDate, 
+                start_time: startTime, 
+                end_time: endTime, 
+                customer_name: name, 
+                customer_phone: phone, 
+                status: 'pending_payment', 
+                source: 'online' 
+            }])
             .select()
             .single();
 
         if (insertErr) throw insertErr;
+
+        // Save to localStorage so they can resume screenshot upload
+        const pitchName = document.getElementById('pitchNameTitle').textContent;
+        const expiresAt = new Date(Date.now() + 10 * 60000).toISOString();
+        localStorage.setItem('pending_booking', JSON.stringify({
+            id: newBooking.id,
+            pitchName: pitchName,
+            expiresAt: expiresAt
+        }));
+
         window.location.href = `pay-booking.html?id=${newBooking.id}`;
 
     } catch (error) {
@@ -504,10 +548,26 @@ function renderAllSlotsGrid() {
             }
 
             const isBooked = _allBookings.some(b => {
-                if (b.slot_id !== slot.id || b.booking_date !== dayInfo.dateStr) return false;
-                if (b.status === 'confirmed') return true;
-                if (b.status === 'pending_payment') return (now - new Date(b.created_at)) / 60000 <= 10;
-                return false;
+                if (b.booking_date !== dayInfo.dateStr) return false;
+                if (b.status === 'rejected' || b.status === 'cancelled') return false;
+                if (b.status === 'pending_payment' && (now - new Date(b.created_at)) / 60000 > 10) return false;
+
+                let bs = 0, be = 0;
+                if (b.start_time && b.end_time) {
+                    bs = timeStrToMins(b.start_time);
+                    be = timeStrToMins(b.end_time);
+                } else if (b.slot_id) {
+                    const s = _allSlots.find(slotItem => slotItem.id === b.slot_id);
+                    if (!s) return false;
+                    bs = timeStrToMins(s.start_time);
+                    be = timeStrToMins(s.end_time);
+                } else {
+                    return false;
+                }
+
+                const slotStart = timeStrToMins(slot.start_time);
+                const slotEnd = timeStrToMins(slot.end_time);
+                return bs < slotEnd && be > slotStart;
             });
 
             if (!isBooked) cards.push({ slot, dateInfo: dayInfo });

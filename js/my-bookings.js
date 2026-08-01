@@ -32,7 +32,7 @@ async function fetchAllBookings(phone) {
         // Fetch normal bookings
         const { data: bookings, error: bErr } = await supabaseClient
             .from('bookings')
-            .select(`*, slots(day_of_week, start_time, end_time, pitches(name, location, price_per_hour, cancel_cutoff_hours, refund_percent_after_cutoff))`)
+            .select(`id, status, booking_date, start_time, end_time, created_at, slots(day_of_week, start_time, end_time, pitches(name, location, price_per_hour, cancel_cutoff_hours, refund_percent_after_cutoff))`)
             .eq('customer_phone', phone)
             .neq('source', 'manual')
             .order('created_at', { ascending: false });
@@ -90,11 +90,13 @@ function renderBookings(bookings) {
         const statusObj = statusMap[booking.status] || { label: booking.status, color: '#94a3b8', icon: 'info' };
         const bookingDate = new Date(booking.booking_date).toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
         
+        const startT = booking.start_time || slot.start_time;
+        const endT = booking.end_time || slot.end_time;
         let cancelBtn = '';
         if (booking.status === 'confirmed') {
             const cutoff = pitch.cancel_cutoff_hours || 24;
             const refundPct = pitch.refund_percent_after_cutoff ?? 0;
-            const matchDateTime = new Date(booking.booking_date + 'T' + slot.start_time);
+            const matchDateTime = new Date(booking.booking_date + 'T' + startT);
             const hoursToMatch = (matchDateTime - new Date()) / 3600000;
             const refundPercent = hoursToMatch >= cutoff ? 100 : refundPct;
             const refundAmount = Math.round((pitch.price_per_hour * refundPercent) / 100);
@@ -102,6 +104,17 @@ function renderBookings(bookings) {
                 ? `الإلغاء قبل ${cutoff} ساعة — استرداد 100% (${pitch.price_per_hour} جنيه)`
                 : `الإلغاء بعد المهلة — استرداد ${refundPct}% (${refundAmount} جنيه)`;
             cancelBtn = `<button class="btn" style="margin-top: 10px; background: transparent; border: 1px solid #ef4444; color: #ef4444; border-radius: 8px; padding: 8px 15px; cursor: pointer; font-family: inherit; font-size: 0.9rem; width: 100%;" onclick="openCancelModal('${booking.id}', '${pitch.name}', ${refundAmount}, '${policyText.replace(/'/g, "&apos;")}')"><i data-lucide="x-circle" style="width: 16px; height: 16px; vertical-align: middle;"></i> طلب إلغاء الحجز</button>`;
+        }
+
+        let payBtn = '';
+        if (booking.status === 'pending_payment') {
+            const now = new Date();
+            const minsPassed = (now - new Date(booking.created_at)) / 60000;
+            if (minsPassed <= 10) {
+                payBtn = `<a href="pay-booking.html?id=${booking.id}" class="btn btn-primary" style="margin-top: 10px; width: 100%; text-decoration: none; display: block; text-align: center;"><i data-lucide="upload-cloud" style="width: 16px; height: 16px; vertical-align: middle;"></i> رفع إيصال الدفع (متبقي ${Math.max(0, Math.ceil(10 - minsPassed))} دقيقة)</a>`;
+            } else {
+                payBtn = `<p style="color: #ef4444; font-size: 0.85rem; margin-top: 10px; text-align: center; font-weight: bold;">⚠️ انتهت مهلة الدفع (10 دقائق)</p>`;
+            }
         }
         
         const card = document.createElement('div');
@@ -118,8 +131,9 @@ function renderBookings(bookings) {
                 </div>
             </div>
             <p style="margin-bottom: 8px; font-weight: 600;"><i data-lucide="calendar" style="width:16px;height:16px;color:var(--text-muted);vertical-align:middle;"></i> ${bookingDate}</p>
-            <p style="font-weight: 600;"><i data-lucide="clock" style="width:16px;height:16px;color:var(--text-muted);vertical-align:middle;"></i> ${formatTimeDisplay(slot.start_time)} - ${formatTimeDisplay(slot.end_time)}</p>
+            <p style="font-weight: 600;"><i data-lucide="clock" style="width:16px;height:16px;color:var(--text-muted);vertical-align:middle;"></i> ${formatTimeDisplay(startT)} - ${formatTimeDisplay(endT)}</p>
             ${cancelBtn}
+            ${payBtn}
             <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-color);">
                 <p style="font-size: 0.8rem; color: var(--text-muted);">رقم الحجز: #${booking.id.split('-')[0]}</p>
             </div>

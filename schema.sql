@@ -22,6 +22,7 @@ CREATE TABLE public.pitches (
     photos TEXT[] DEFAULT '{}',
     subscription_status TEXT DEFAULT 'inactive' CHECK (subscription_status IN ('active', 'inactive', 'pending')),
     subscription_expires_at TIMESTAMP WITH TIME ZONE,
+    payment_proof_url TEXT,
     cancel_cutoff_hours INTEGER DEFAULT 24,
     refund_percent_after_cutoff INTEGER DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
@@ -39,10 +40,13 @@ CREATE TABLE public.slots (
 
 CREATE TABLE public.bookings (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-    slot_id UUID REFERENCES public.slots(id) ON DELETE CASCADE,
+    pitch_id UUID REFERENCES public.pitches(id) ON DELETE CASCADE,
+    slot_id UUID REFERENCES public.slots(id) ON DELETE SET NULL,
     customer_name TEXT,
     customer_phone TEXT,
     booking_date DATE NOT NULL,
+    start_time TIME,
+    end_time TIME,
     status TEXT DEFAULT 'pending_payment' CHECK (status IN ('pending_payment', 'confirmed', 'rejected', 'cancelled')),
     payment_screenshot TEXT,
     source TEXT DEFAULT 'online' CHECK (source IN ('online', 'manual')),
@@ -105,6 +109,15 @@ CREATE POLICY "Owners can view their own profile" ON public.owners FOR SELECT US
 CREATE POLICY "Owners can update their own profile" ON public.owners FOR UPDATE USING (auth.uid() = id);
 CREATE POLICY "Public can view active pitches" ON public.pitches FOR SELECT USING (subscription_status = 'active');
 CREATE POLICY "Owners can manage their own pitches" ON public.pitches FOR ALL USING (auth.uid() = owner_id);
+
+-- Admins RLS Policies for pitches
+CREATE POLICY "Admins can view all pitches" ON public.pitches FOR SELECT USING (
+    EXISTS (SELECT 1 FROM public.owners WHERE owners.id = auth.uid() AND owners.role = 'admin')
+);
+CREATE POLICY "Admins can update all pitches" ON public.pitches FOR UPDATE USING (
+    EXISTS (SELECT 1 FROM public.owners WHERE owners.id = auth.uid() AND owners.role = 'admin')
+);
+
 CREATE POLICY "Public can view slots" ON public.slots FOR SELECT USING (is_active = true);
 CREATE POLICY "Owners can manage slots for their pitches" ON public.slots FOR ALL USING (
     EXISTS (SELECT 1 FROM public.pitches WHERE pitches.id = slots.pitch_id AND pitches.owner_id = auth.uid())
@@ -133,10 +146,10 @@ ON CONFLICT DO NOTHING;
 -- bookings
 CREATE POLICY "Public can create bookings" ON public.bookings FOR INSERT WITH CHECK (true);
 CREATE POLICY "Owners can view bookings for their pitches" ON public.bookings FOR SELECT USING (
-    EXISTS (SELECT 1 FROM public.slots JOIN public.pitches ON slots.pitch_id = pitches.id WHERE slots.id = bookings.slot_id AND pitches.owner_id = auth.uid())
+    EXISTS (SELECT 1 FROM public.pitches WHERE pitches.id = bookings.pitch_id AND pitches.owner_id = auth.uid())
 );
 CREATE POLICY "Owners can update bookings for their pitches" ON public.bookings FOR UPDATE USING (
-    EXISTS (SELECT 1 FROM public.slots JOIN public.pitches ON slots.pitch_id = pitches.id WHERE slots.id = bookings.slot_id AND pitches.owner_id = auth.uid())
+    EXISTS (SELECT 1 FROM public.pitches WHERE pitches.id = bookings.pitch_id AND pitches.owner_id = auth.uid())
 );
 
 -- recurring_bookings
