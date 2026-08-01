@@ -25,11 +25,11 @@ async function loadPaymentDetails(bookingId) {
     const content = document.getElementById('paymentContent');
     
     try {
-        // Fetch booking info with slot and pitch info to get owner payment details
+        // Fetch booking — include pitch_id for free-range bookings (no slot_id)
         const { data: booking, error: bookingErr } = await supabaseClient
             .from('bookings')
             .select(`
-                id, status, created_at,
+                id, status, created_at, pitch_id,
                 slots (
                     pitches (
                         vodafone_cash, instapay_link
@@ -58,13 +58,26 @@ async function loadPaymentDetails(bookingId) {
                 <a href="index.html" class="btn btn-outline" style="margin-top: 20px;">العودة للرئيسية</a>
             `;
             lucide.createIcons();
-            
-            // Optionally auto-cancel in DB, though our logic in pitch-details treats it as cancelled automatically
             await supabaseClient.from('bookings').update({ status: 'cancelled' }).eq('id', bookingId);
+            localStorage.removeItem('pending_booking');
             return;
         }
         
-        const pitch = booking.slots.pitches;
+        // Resolve pitch data — slot-based booking OR free-range booking (pitch_id only)
+        let pitch = booking.slots?.pitches || null;
+        
+        if (!pitch && booking.pitch_id) {
+            // Free-range booking: fetch pitch directly
+            const { data: pitchData, error: pitchErr } = await supabaseClient
+                .from('pitches')
+                .select('vodafone_cash, instapay_link')
+                .eq('id', booking.pitch_id)
+                .single();
+            if (pitchErr) throw pitchErr;
+            pitch = pitchData;
+        }
+        
+        if (!pitch) throw new Error('تعذّر تحميل بيانات الملعب.');
         
         document.getElementById('vCashNum').textContent = pitch.vodafone_cash || 'غير محدد من المالك';
         if (pitch.instapay_link) {
@@ -77,9 +90,10 @@ async function loadPaymentDetails(bookingId) {
         
     } catch (err) {
         console.error(err);
-        loading.textContent = "حدث خطأ أثناء تحميل البيانات.";
+        loading.textContent = "حدث خطأ أثناء تحميل البيانات: " + err.message;
     }
 }
+
 
 async function handleReceiptUpload(e, bookingId) {
     e.preventDefault();
