@@ -110,6 +110,9 @@ CREATE POLICY "Owners can manage slots for their pitches" ON public.slots FOR AL
     EXISTS (SELECT 1 FROM public.pitches WHERE pitches.id = slots.pitch_id AND pitches.owner_id = auth.uid())
 );
 CREATE POLICY "Public can view platform settings" ON public.platform_settings FOR SELECT USING (true);
+CREATE POLICY "Admins can update platform settings" ON public.platform_settings FOR UPDATE USING (
+    EXISTS (SELECT 1 FROM public.owners WHERE owners.id = auth.uid() AND owners.role = 'admin')
+);
 
 -- 4. Create Storage Buckets
 INSERT INTO storage.buckets (id, name, public) VALUES ('pitch_photos', 'pitch_photos', true) ON CONFLICT DO NOTHING;

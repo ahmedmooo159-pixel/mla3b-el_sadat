@@ -1,6 +1,6 @@
 // service-worker.js - Fixed Version
 
-const CACHE_NAME = 'mla3b-sadat-v1';
+const CACHE_NAME = 'mla3b-sadat-v2';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -41,40 +41,39 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Fetch event
+// Fetch event (Network First strategy)
 self.addEventListener('fetch', event => {
-  // Skip non-GET requests
-  if (event.request.method !== 'GET') {
+  // Skip non-GET requests or browser extension requests
+  if (event.request.method !== 'GET' || !event.request.url.startsWith('http')) {
     return;
   }
 
   event.respondWith(
-    caches.match(event.request)
+    fetch(event.request)
       .then(response => {
-        // Return cached version if available
-        if (response) {
+        // Don't cache non-successful responses or API requests
+        if (!response || response.status !== 200 || response.type === 'error' || event.request.url.includes('supabase.co')) {
           return response;
         }
 
-        return fetch(event.request).then(response => {
-          // Don't cache non-successful responses, unsupported schemes, or API requests
-          if (!response || response.status !== 200 || response.type === 'error' || !event.request.url.startsWith('http') || event.request.url.includes('supabase.co')) {
-            return response;
+        // Clone and cache the successful response
+        const responseToCache = response.clone();
+        caches.open(CACHE_NAME).then(cache => {
+          cache.put(event.request, responseToCache);
+        });
+
+        return response;
+      })
+      .catch(() => {
+        // If network fails, try to serve from cache
+        return caches.match(event.request).then(cachedResponse => {
+          if (cachedResponse) {
+            return cachedResponse;
           }
-
-          // Clone the response
-          const responseToCache = response.clone();
-
-          caches.open(CACHE_NAME)
-            .then(cache => {
-              cache.put(event.request, responseToCache);
-            });
-
-          return response;
-        }).catch(error => {
-          console.log('Fetch error:', error);
-          // Return offline page or cached response if available
-          return caches.match('/index.html');
+          // Fallback for HTML pages
+          if (event.request.headers.get('accept').includes('text/html')) {
+            return caches.match('/index.html');
+          }
         });
       })
   );

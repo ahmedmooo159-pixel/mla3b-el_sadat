@@ -57,13 +57,48 @@
                     
                     <div class="slots-section">
                         <h3 style="margin-bottom: 20px; margin-top: 40px; font-size: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
-                            المواعيد الفاضية دلوقتي ⏰
+                            احجز موعدك ⏰
                         </h3>
-                        
-                        <!-- For Sprint 3 we just build UI. Slot management is Sprint 4 -->
-                        <div id="slotsContainer" class="slots-grid">
-                            <!-- Slots will be populated here -->
+
+                        <!-- Free-form picker -->
+                        <div id="timePickerPanel" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 20px; padding: 25px; margin-bottom: 25px;">
+                            <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 20px;">اختار اليوم والوقت اللي عايزه — وهنشوف لك الإتاحة على طول 👇</p>
+                            
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
+                                <div class="form-group" style="margin: 0;">
+                                    <label>اليوم</label>
+                                    <select id="pickerDay" onchange="checkAvailability()" style="cursor:pointer;">
+                                        <option value="">اختار يوم</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" style="margin: 0;">
+                                    <label>من الساعة</label>
+                                    <select id="pickerStart" onchange="checkAvailability()" style="cursor:pointer;">
+                                        <option value="">-- بداية --</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" style="margin: 0;">
+                                    <label>لحد الساعة</label>
+                                    <select id="pickerEnd" onchange="checkAvailability()" style="cursor:pointer;">
+                                        <option value="">-- نهاية --</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Availability Result -->
+                            <div id="availabilityResult" style="margin-top: 20px; display: none;"></div>
                         </div>
+
+                        <!-- All available slots grid (collapsed by default) -->
+                        <details style="margin-top: 10px;">
+                            <summary style="cursor: pointer; color: var(--text-muted); font-size: 0.9rem; padding: 10px 0; list-style: none; display: flex; align-items: center; gap: 8px;">
+                                <i data-lucide="calendar-days" style="width: 16px; height: 16px;"></i>
+                                عرض كل المواعيد المتاحة في الأسبوع القادم
+                            </summary>
+                            <div id="slotsContainer" class="slots-grid" style="margin-top: 15px;">
+                                <!-- Slots will be populated here -->
+                            </div>
+                        </details>
                         
                         <div id="noSlotsMsg" class="empty-state" style="display: none; padding: 30px;">
                             <i data-lucide="calendar-x"></i>

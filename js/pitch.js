@@ -87,7 +87,7 @@ async function handlePitchCreation(e) {
                 cancel_cutoff_hours: cancelCutoff,
                 refund_percent_after_cutoff: refundPercent,
                 photos: photoUrl ? [photoUrl] : [],
-                subscription_status: 'inactive'
+                subscription_status: 'pending'
             }]);
             
         if (insertError) throw new Error("فشل حفظ الملعب: " + insertError.message);

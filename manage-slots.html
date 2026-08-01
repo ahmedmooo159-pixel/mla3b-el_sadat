@@ -168,6 +168,48 @@
             background: #f59e0b;
             color: #000;
         }
+
+        .tab-btn {
+            flex: 1;
+            padding: 10px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+        }
+        .tab-btn.active {
+            background: var(--primary-color);
+            color: var(--bg-darker);
+            border-color: var(--primary-color);
+            font-weight: 700;
+        }
+
+        .day-check-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            color: var(--text-light);
+        }
+        .day-check-label:has(input:checked) {
+            border-color: var(--primary-color);
+            background: rgba(34, 197, 94, 0.1);
+            color: var(--primary-color);
+        }
+        .day-check-label input[type="checkbox"] {
+            accent-color: var(--primary-color);
+            width: 16px;
+            height: 16px;
+        }
     </style>
 
     <link rel="manifest" href="/manifest.json">
@@ -199,41 +241,114 @@
             <div class="manage-container animate-fade-in">
                 <!-- Add Slot Form -->
                 <div class="panel">
-                    <h3 class="panel-title"><i data-lucide="plus-circle"></i> ضيف ميعاد جديد</h3>
-                    <form id="addSlotForm">
-                        <input type="hidden" id="pitchId">
-                        
-                        <div class="form-group" style="position: relative;">
-                            <label>يوم إيه في الأسبوع؟</label>
-                            <select id="dayOfWeek" required style="appearance: none; cursor: pointer;">
-                                <option value="6">السبت</option>
-                                <option value="0">الأحد</option>
-                                <option value="1">الإثنين</option>
-                                <option value="2">الثلاثاء</option>
-                                <option value="3">الأربعاء</option>
-                                <option value="4">الخميس</option>
-                                <option value="5">الجمعة</option>
-                            </select>
-                            <i data-lucide="chevron-down" style="position: absolute; left: 15px; top: 40px; color: var(--text-muted); pointer-events: none;"></i>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>هتبدأ الساعة كام؟</label>
-                            <input type="time" id="startTime" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>هتخلص الساعة كام؟</label>
-                            <input type="time" id="endTime" required>
-                        </div>
-                        
-                        <div id="formError" class="error-message"></div>
-                        <div id="formSuccess" class="success-message"></div>
-                        
-                        <button type="submit" class="btn btn-primary btn-full" id="submitBtn" style="margin-top: 10px;">
-                            ضيف للمواعيد المتاحة
-                        </button>
-                    </form>
+                    <h3 class="panel-title"><i data-lucide="plus-circle"></i> إعداد مواعيد الملعب</h3>
+                    
+                    <!-- Tab Switcher -->
+                    <div style="display:flex; gap:10px; margin-bottom:25px;">
+                        <button type="button" class="tab-btn active" id="tabBulk" onclick="switchTab('bulk')"> ⚡ توليد تلقائي</button>
+                        <button type="button" class="tab-btn" id="tabSingle" onclick="switchTab('single')"> ➕ إضافة واحدة</button>
+                    </div>
+
+                    <!-- BULK GENERATOR TAB -->
+                    <div id="panelBulk">
+                        <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:20px; line-height:1.7;">
+                            اختار الأيام وساعات العمل وطول الحصة — وهيتولد كل المواعيد تلقائياً أسبوعياً 🎯
+                        </p>
+                        <form id="bulkSlotForm">
+                            <input type="hidden" id="pitchIdBulk">
+
+                            <div class="form-group">
+                                <label>أيام التشغيل (ممكن تختار أكتر من واحد)</label>
+                                <div id="daysCheckboxes" style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;">
+                                    <label class="day-check-label"><input type="checkbox" value="6" checked> السبت</label>
+                                    <label class="day-check-label"><input type="checkbox" value="0" checked> الأحد</label>
+                                    <label class="day-check-label"><input type="checkbox" value="1" checked> الإثنين</label>
+                                    <label class="day-check-label"><input type="checkbox" value="2" checked> الثلاثاء</label>
+                                    <label class="day-check-label"><input type="checkbox" value="3" checked> الأربعاء</label>
+                                    <label class="day-check-label"><input type="checkbox" value="4" checked> الخميس</label>
+                                    <label class="day-check-label"><input type="checkbox" value="5"> الجمعة</label>
+                                </div>
+                            </div>
+
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
+                                <div class="form-group">
+                                    <label>الفتح (البداية)</label>
+                                    <input type="time" id="bulkStartTime" value="09:00" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>الإغلاق (النهاية)</label>
+                                    <input type="time" id="bulkEndTime" value="23:00" required>
+                                </div>
+                            </div>
+
+                            <div class="form-group" style="position:relative;">
+                                <label>مدة كل حصة</label>
+                                <select id="bulkDuration" style="appearance:none; cursor:pointer;">
+                                    <option value="60">ساعة (60 دقيقة)</option>
+                                    <option value="90">ساعة ونص (90 دقيقة)</option>
+                                    <option value="120">ساعتين (120 دقيقة)</option>
+                                    <option value="30">نص ساعة (30 دقيقة)</option>
+                                </select>
+                                <i data-lucide="chevron-down" style="position:absolute; left:15px; top:40px; color:var(--text-muted); pointer-events:none;"></i>
+                            </div>
+
+                            <!-- Preview -->
+                            <div id="bulkPreview" style="background:rgba(34,197,94,0.08); border:1px solid rgba(34,197,94,0.25); border-radius:12px; padding:15px; margin-bottom:15px; display:none;">
+                                <p style="color:var(--primary-color); font-weight:600; margin-bottom:8px; font-size:0.9rem;">📋 المواعيد اللي هتتولد:</p>
+                                <div id="bulkPreviewText" style="color:var(--text-muted); font-size:0.85rem; line-height:2;"></div>
+                            </div>
+
+                            <div id="bulkError" class="error-message"></div>
+                            <div id="bulkSuccess" class="success-message"></div>
+
+                            <div style="display:flex; gap:10px; margin-top:10px;">
+                                <button type="button" class="btn btn-outline" onclick="previewBulkSlots()" style="flex:1;">
+                                    <i data-lucide="eye"></i> معاينة
+                                </button>
+                                <button type="submit" class="btn btn-primary" id="bulkSubmitBtn" style="flex:2;">
+                                    ⚡ ولّد المواعيد
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- SINGLE SLOT TAB -->
+                    <div id="panelSingle" style="display:none;">
+                        <form id="addSlotForm">
+                            <input type="hidden" id="pitchId">
+                            
+                            <div class="form-group" style="position: relative;">
+                                <label>يوم إيه في الأسبوع؟</label>
+                                <select id="dayOfWeek" required style="appearance: none; cursor: pointer;">
+                                    <option value="6">السبت</option>
+                                    <option value="0">الأحد</option>
+                                    <option value="1">الإثنين</option>
+                                    <option value="2">الثلاثاء</option>
+                                    <option value="3">الأربعاء</option>
+                                    <option value="4">الخميس</option>
+                                    <option value="5">الجمعة</option>
+                                </select>
+                                <i data-lucide="chevron-down" style="position: absolute; left: 15px; top: 40px; color: var(--text-muted); pointer-events: none;"></i>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>هتبدأ الساعة كام؟</label>
+                                <input type="time" id="startTime" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>هتخلص الساعة كام؟</label>
+                                <input type="time" id="endTime" required>
+                            </div>
+                            
+                            <div id="formError" class="error-message"></div>
+                            <div id="formSuccess" class="success-message"></div>
+                            
+                            <button type="submit" class="btn btn-primary btn-full" id="submitBtn" style="margin-top: 10px;">
+                                ضيف للمواعيد المتاحة
+                            </button>
+                        </form>
+                    </div>
                 </div>
                 
                 <!-- Current Slots List -->

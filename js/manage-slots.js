@@ -20,6 +20,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     document.getElementById('pitchId').value = currentPitchId;
+    document.getElementById('pitchIdBulk').value = currentPitchId;
     
     setTimeout(async () => {
         if (!currentUser) {
@@ -300,3 +301,134 @@ window.deleteSlot = async function(slotId) {
         alert("فشل الحذف: " + error.message);
     }
 };
+
+// ========================
+// TAB SWITCHER
+// ========================
+window.switchTab = function(tab) {
+    document.getElementById('panelBulk').style.display = tab === 'bulk' ? 'block' : 'none';
+    document.getElementById('panelSingle').style.display = tab === 'single' ? 'block' : 'none';
+    document.getElementById('tabBulk').classList.toggle('active', tab === 'bulk');
+    document.getElementById('tabSingle').classList.toggle('active', tab === 'single');
+};
+
+// ========================
+// BULK SLOT GENERATOR
+// ========================
+function getCheckedDays() {
+    return Array.from(document.querySelectorAll('#daysCheckboxes input[type=checkbox]:checked'))
+                .map(cb => parseInt(cb.value));
+}
+
+function generateSlotTimes(startTime, endTime, durationMins) {
+    const slots = [];
+    let [sh, sm] = startTime.split(':').map(Number);
+    let [eh, em] = endTime.split(':').map(Number);
+    let startMins = sh * 60 + sm;
+    const endMins = eh * 60 + em;
+
+    while (startMins + durationMins <= endMins) {
+        const slotStart = `${String(Math.floor(startMins/60)).padStart(2,'0')}:${String(startMins%60).padStart(2,'0')}`;
+        const slotEndMins = startMins + durationMins;
+        const slotEnd = `${String(Math.floor(slotEndMins/60)).padStart(2,'0')}:${String(slotEndMins%60).padStart(2,'0')}`;
+        slots.push({ start: slotStart, end: slotEnd });
+        startMins += durationMins;
+    }
+    return slots;
+}
+
+window.previewBulkSlots = function() {
+    const days = getCheckedDays();
+    const startTime = document.getElementById('bulkStartTime').value;
+    const endTime = document.getElementById('bulkEndTime').value;
+    const duration = parseInt(document.getElementById('bulkDuration').value);
+    const errorDiv = document.getElementById('bulkError');
+
+    errorDiv.textContent = '';
+    if (days.length === 0) { errorDiv.textContent = 'اختار يوم واحد على الأقل'; return; }
+    if (!startTime || !endTime) { errorDiv.textContent = 'تأكد من اختيار وقت البداية والنهاية'; return; }
+    if (startTime >= endTime) { errorDiv.textContent = 'وقت البداية لازم يكون قبل وقت النهاية'; return; }
+
+    const slotTimes = generateSlotTimes(startTime, endTime, duration);
+    if (slotTimes.length === 0) { errorDiv.textContent = 'الوقت المختار مش كافي لحصة واحدة'; return; }
+
+    const dayNames = { 0:'الأحد', 1:'الإثنين', 2:'الثلاثاء', 3:'الأربعاء', 4:'الخميس', 5:'الجمعة', 6:'السبت' };
+    const previewDiv = document.getElementById('bulkPreview');
+    const previewText = document.getElementById('bulkPreviewText');
+
+    const dayLabels = days.map(d => dayNames[d]).join('، ');
+    const timeLabels = slotTimes.map(s => `${s.start} – ${s.end}`).join(' &nbsp;|&nbsp; ');
+
+    previewText.innerHTML = `
+        <strong>الأيام:</strong> ${dayLabels}<br>
+        <strong>عدد الحصص لكل يوم:</strong> ${slotTimes.length} حصة<br>
+        <strong>إجمالي المواعيد:</strong> ${days.length * slotTimes.length} ميعاد<br>
+        <strong>المواعيد:</strong> ${timeLabels}
+    `;
+    previewDiv.style.display = 'block';
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    const bulkForm = document.getElementById('bulkSlotForm');
+    if (bulkForm) {
+        bulkForm.addEventListener('submit', handleBulkSlots);
+    }
+});
+
+async function handleBulkSlots(e) {
+    e.preventDefault();
+    const btn = document.getElementById('bulkSubmitBtn');
+    const errorDiv = document.getElementById('bulkError');
+    const successDiv = document.getElementById('bulkSuccess');
+
+    const days = getCheckedDays();
+    const startTime = document.getElementById('bulkStartTime').value;
+    const endTime = document.getElementById('bulkEndTime').value;
+    const duration = parseInt(document.getElementById('bulkDuration').value);
+    const pitchId = document.getElementById('pitchIdBulk').value;
+
+    errorDiv.textContent = '';
+    successDiv.textContent = '';
+
+    if (days.length === 0) { errorDiv.textContent = 'اختار يوم واحد على الأقل'; return; }
+    if (startTime >= endTime) { errorDiv.textContent = 'وقت البداية لازم يكون قبل وقت النهاية'; return; }
+
+    const slotTimes = generateSlotTimes(startTime, endTime, duration);
+    if (slotTimes.length === 0) { errorDiv.textContent = 'الوقت المختار مش كافي لحصة واحدة'; return; }
+
+    btn.disabled = true;
+    btn.textContent = 'بيتولد المواعيد...';
+
+    try {
+        // Build all rows to insert
+        const rows = [];
+        for (const day of days) {
+            for (const slot of slotTimes) {
+                rows.push({
+                    pitch_id: pitchId,
+                    day_of_week: day,
+                    start_time: slot.start,
+                    end_time: slot.end,
+                    is_active: true
+                });
+            }
+        }
+
+        // Delete existing slots for this pitch first to avoid duplicates
+        if (confirm(`هيتمسح المواعيد القديمة ويتولد ${rows.length} ميعاد جديد. تأكد؟`)) {
+            await supabaseClient.from('slots').delete().eq('pitch_id', pitchId);
+            const { error } = await supabaseClient.from('slots').insert(rows);
+            if (error) throw error;
+
+            successDiv.textContent = `✅ تم توليد ${rows.length} ميعاد بنجاح!`;
+            document.getElementById('bulkPreview').style.display = 'none';
+            await loadSlots(pitchId);
+        }
+    } catch (err) {
+        errorDiv.textContent = 'حدث خطأ: ' + err.message;
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '⚡ ولّد المواعيد';
+        setTimeout(() => { successDiv.textContent = ''; }, 4000);
+    }
+}

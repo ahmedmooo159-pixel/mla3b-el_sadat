@@ -65,11 +65,11 @@ async function loadPendingSubscriptions() {
         const { data: pitches, error } = await supabaseClient
             .from('pitches')
             .select(`
-                id, name, location, price_per_hour, payment_proof_url, updated_at,
+                id, name, location, price_per_hour, payment_proof_url, created_at,
                 owners (full_name, phone)
             `)
             .eq('subscription_status', 'pending')
-            .order('updated_at', { ascending: false });
+            .order('created_at', { ascending: false });
             
         if (error) throw error;
         
@@ -99,7 +99,7 @@ async function loadPendingSubscriptions() {
                     <div>
                         <h4 style="color: var(--primary-color); margin-bottom: 5px;">${pitch.name}</h4>
                         <p style="font-size: 0.9rem; color: var(--text-muted);"><i data-lucide="user" style="width:14px;height:14px;"></i> ${pitch.owners?.full_name} (${pitch.owners?.phone})</p>
-                        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 5px;">تم الطلب: ${new Date(pitch.updated_at).toLocaleDateString('ar-EG')}</p>
+                        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 5px;">تم الطلب: ${new Date(pitch.created_at).toLocaleDateString('ar-EG')}</p>
                     </div>
                     <div style="text-align: left;">
                         ${receiptBtn}
