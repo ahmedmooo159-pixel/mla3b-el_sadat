@@ -1,6 +1,6 @@
-// js/auth.js
-// Note: supabaseClient and currentUser are declared on window in supabase.js
+// js/auth.js - Version 2.0 - Fixed and Stable
 
+// ============ UTILITY FUNCTIONS ============
 async function checkSession() {
     if (!window.supabaseClient) return;
     
@@ -26,34 +26,52 @@ async function checkSession() {
 
 function updateUIForAuth(user) {
     const loginBtn = document.getElementById('loginBtn');
+    if (!loginBtn) return; // Safety check
+    
     if (user) {
-        if (loginBtn) {
-            loginBtn.textContent = 'لوحة التحكم';
-            loginBtn.onclick = () => window.location.href = 'dashboard.html';
-        }
+        loginBtn.textContent = 'لوحة التحكم';
+        loginBtn.onclick = () => window.location.href = 'dashboard.html';
     } else {
-        if (loginBtn) {
-            loginBtn.textContent = 'دخول أصحاب الملاعب';
-            loginBtn.onclick = () => window.location.href = 'login.html';
-        }
+        loginBtn.textContent = 'دخول أصحاب الملاعب';
+        loginBtn.onclick = () => window.location.href = 'login.html';
     }
 }
 
+// ============ AUTH FUNCTIONS ============
 async function handleLogin(email, password) {
     const errorDiv = document.getElementById('authError');
     const btn = document.getElementById('loginSubmitBtn');
+    
+    if (!errorDiv || !btn) {
+        console.error('Auth form elements not found');
+        return;
+    }
+    
     errorDiv.textContent = '';
     btn.disabled = true;
     btn.textContent = 'جاري الدخول...';
     
-    const { data, error } = await window.supabaseClient.auth.signInWithPassword({ email, password });
-    
-    if (error) {
-        errorDiv.textContent = error.message;
+    try {
+        if (!window.supabaseClient) {
+            throw new Error('Supabase client not initialized');
+        }
+        
+        const { data, error } = await window.supabaseClient.auth.signInWithPassword({ 
+            email, 
+            password 
+        });
+        
+        if (error) {
+            errorDiv.textContent = error.message;
+            btn.disabled = false;
+            btn.textContent = 'دخول';
+        } else {
+            window.location.href = 'dashboard.html';
+        }
+    } catch (err) {
+        errorDiv.textContent = 'خطأ: ' + err.message;
         btn.disabled = false;
         btn.textContent = 'دخول';
-    } else {
-        window.location.href = 'dashboard.html';
     }
 }
 
@@ -62,14 +80,23 @@ async function handleSignup(email, password, phone) {
     const successDiv = document.getElementById('authSuccess');
     const btn = document.getElementById('signupSubmitBtn');
     
+    if (!errorDiv || !btn) {
+        console.error('Signup form elements not found');
+        return;
+    }
+    
     errorDiv.textContent = '';
-    successDiv.textContent = '';
+    if (successDiv) successDiv.textContent = '';
     btn.disabled = true;
     btn.textContent = 'جاري الإنشاء...';
     
     try {
         // تأخير بسيط لتجنب rate limiting
         await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        if (!window.supabaseClient) {
+            throw new Error('Supabase client not initialized');
+        }
         
         const { data, error } = await window.supabaseClient.auth.signUp({ 
             email, 
@@ -94,7 +121,7 @@ async function handleSignup(email, password, phone) {
                 btn.disabled = false;
                 btn.textContent = 'اعمل الحساب';
             } else {
-                successDiv.textContent = 'تم إنشاء الحساب بنجاح! جاري تحويلك...';
+                if (successDiv) successDiv.textContent = 'تم إنشاء الحساب بنجاح! جاري تحويلك...';
                 setTimeout(() => {
                     window.location.href = 'dashboard.html';
                 }, 1500);
@@ -108,50 +135,54 @@ async function handleSignup(email, password, phone) {
 }
 
 async function handleLogout() {
-    await window.supabaseClient.auth.signOut();
-    window.location.href = 'index.html';
+    try {
+        await window.supabaseClient.auth.signOut();
+        window.location.href = 'index.html';
+    } catch (err) {
+        console.error('Logout error:', err);
+    }
 }
 
-// Initialize auth listeners after DOM is ready
-// Initialize auth listeners after DOM is ready
-document.addEventListener('DOMContentLoaded', async () => {
+// ============ INITIALIZATION ============
+function initializeAuth() {
+    console.log('Auth initialization started');
+    
     if (!window.supabaseClient) {
-        console.error('Supabase client not initialized');
+        console.error('Supabase client not available yet, retrying in 500ms...');
+        setTimeout(initializeAuth, 500);
         return;
     }
     
-    console.log('DOMContentLoaded - initializing auth');
-    
     // Get current session
-    try {
-        const { data: { session }, error: sessionError } = await window.supabaseClient.auth.getSession();
-        
-        if (sessionError) {
-            console.error('Session error:', sessionError);
-        }
-        
-        window.currentUser = session?.user || null;
-        console.log('Session loaded, currentUser:', window.currentUser);
-        
-        if (window.currentUser) {
-            checkSession();
-            console.log('User logged in, ID:', window.currentUser.id);
-        }
-    } catch (err) {
-        console.error('Error getting session:', err);
-    }
+    window.supabaseClient.auth.getSession()
+        .then(({ data: { session }, error }) => {
+            if (error) {
+                console.error('Session error:', error);
+            } else {
+                window.currentUser = session?.user || null;
+                console.log('✅ Session loaded:', window.currentUser?.email || 'No user');
+                checkSession();
+            }
+        })
+        .catch(err => console.error('Error getting session:', err));
     
-    // Listen for auth changes
+    // Listen for auth state changes
     window.supabaseClient.auth.onAuthStateChange((event, session) => {
         window.currentUser = session?.user || null;
-        console.log('Auth state changed:', event, 'User:', window.currentUser?.id);
+        console.log('Auth state changed:', event);
         
         if (event === 'SIGNED_OUT') {
             const path = window.location.pathname;
-            const isProtectedRoute = path.includes('dashboard.html') || path.includes('create-pitch.html');
-            if (isProtectedRoute) {
+            if (path.includes('dashboard.html') || path.includes('create-pitch.html')) {
                 window.location.href = 'index.html';
             }
         }
     });
-});
+}
+
+// Start initialization when document is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeAuth);
+} else {
+    initializeAuth();
+}
