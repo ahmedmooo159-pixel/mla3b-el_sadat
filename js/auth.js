@@ -57,7 +57,7 @@ async function handleLogin(email, password) {
     }
 }
 
-async function handleSignup(email, password, phone) {
+async function handleSignup(email, password, phone, fullName) {
     const errorDiv = document.getElementById('authError');
     const successDiv = document.getElementById('authSuccess');
     const btn = document.getElementById('signupSubmitBtn');
@@ -86,7 +86,7 @@ async function handleSignup(email, password, phone) {
         } else {
             const userId = data.user.id;
             const { error: dbError } = await window.supabaseClient.from('owners').insert([
-                { id: userId, email: email, phone: phone }
+                { id: userId, email: email, phone: phone, full_name: fullName }
             ]);
             
             if (dbError) {

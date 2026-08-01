@@ -56,7 +56,7 @@ async function handleSubscriptionUpload(e) {
         // Fetch pitch and owner details for the notification
         const { data: pitchData, error: pitchError } = await supabaseClient
             .from('pitches')
-            .select('name, owners(email, phone)')
+            .select('name, owners(full_name, phone)')
             .eq('id', pitchId)
             .single();
             
@@ -95,7 +95,7 @@ async function handleSubscriptionUpload(e) {
             body: { 
                 receiptUrl: receiptUrl,
                 pitchName: pitchData.name,
-                ownerName: pitchData.owners.phone || pitchData.owners.email || 'مالك'
+                ownerName: pitchData.owners.full_name || pitchData.owners.phone || 'مالك'
             }
         });
         

@@ -57,8 +57,8 @@ self.addEventListener('fetch', event => {
         }
 
         return fetch(event.request).then(response => {
-          // Don't cache non-successful responses or unsupported schemes
-          if (!response || response.status !== 200 || response.type === 'error' || !event.request.url.startsWith('http')) {
+          // Don't cache non-successful responses, unsupported schemes, or API requests
+          if (!response || response.status !== 200 || response.type === 'error' || !event.request.url.startsWith('http') || event.request.url.includes('supabase.co')) {
             return response;
           }
 
