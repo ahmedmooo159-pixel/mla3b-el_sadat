@@ -44,13 +44,12 @@
         </main>
     </div>
 
-    <!-- ترتيب الـ scripts: 1. Supabase 2. Auth 3. الـ Logic -->
     <script src="js/supabase.js"></script>
     <script src="js/auth.js"></script>
     
     <script>
-        // استنى شوية عشان auth.js تتحمّل تماماً
-        window.addEventListener('load', () => {
+        // استخدم DOMContentLoaded بدل load
+        document.addEventListener('DOMContentLoaded', () => {
             console.log('Page loaded');
             console.log('handleLogin exists?', typeof handleLogin);
             
