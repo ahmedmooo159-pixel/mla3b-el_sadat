@@ -4,10 +4,11 @@ const daysMap = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأرب
 
 // Global state
 // Global state
+// Global state
 let _allSlots = [];
 let _allBookings = [];
 let _next7Days = [];
-let currentSelectedDuration = 60; // المدة الافتراضية بالدقايق (ساعة واحدة)
+let currentSelectedDuration = 60; // المدة الافتراضية بالدقايق
 let currentActiveDateStr = null;
 
 
@@ -31,7 +32,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const recurringForm = document.getElementById('recurringForm');
     if (recurringForm) recurringForm.addEventListener('submit', handleRecurringSubmit);
-
+    // Duration selector buttons
+    document.querySelectorAll('.duration-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.duration-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentSelectedDuration = parseInt(btn.dataset.duration, 10);
+            if (currentActiveDateStr) {
+                renderSlotsForDay(currentActiveDateStr);
+            }
+        });
+    });
     // Removed old picker event listeners
 });
 
