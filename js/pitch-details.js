@@ -3,9 +3,14 @@
 const daysMap = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 
 // Global state
+// Global state
 let _allSlots = [];
 let _allBookings = [];
 let _next7Days = [];
+let currentSelectedDuration = 60; // المدة الافتراضية بالدقايق (ساعة واحدة)
+let currentActiveDateStr = null;
+
+
 
 document.addEventListener('DOMContentLoaded', () => {
     lucide.createIcons();
