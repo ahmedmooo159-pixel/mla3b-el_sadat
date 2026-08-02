@@ -211,6 +211,25 @@ async function loadBookingsList(pitchId, bookings) {
         const statusColor = b.status === 'confirmed' ? '#10b981' : b.payment_screenshot ? '#8b5cf6' : '#f59e0b';
         const sourceLabel = b.source === 'manual' ? 'حجز يدوي' : 'حجز أونلاين';
         
+        let actionBtns = '';
+        if (b.status === 'pending_payment' && b.payment_screenshot) {
+            const receiptUrl = 'https://' + supabaseClient.storageUrl.split('/')[2] + '/storage/v1/object/public/booking_receipts/' + b.payment_screenshot;
+            
+            actionBtns = `
+                <div style="display: flex; gap: 10px; margin-top: 10px; border-top: 1px solid var(--border-color); padding-top: 10px;">
+                    <a href="${receiptUrl}" target="_blank" class="btn btn-outline" style="flex: 1; padding: 6px; font-size: 0.85rem;"><i data-lucide="image"></i> عرض الإيصال</a>
+                    <button class="btn btn-primary" style="flex: 1; padding: 6px; font-size: 0.85rem;" onclick="confirmBooking('${b.id}')"><i data-lucide="check"></i> تأكيد الحجز</button>
+                    <button class="btn btn-outline" style="flex: 1; padding: 6px; font-size: 0.85rem; border-color: #ef4444; color: #ef4444;" onclick="rejectBooking('${b.id}')"><i data-lucide="x"></i> رفض</button>
+                </div>
+            `;
+        } else if (b.status === 'confirmed') {
+             actionBtns = `
+                <div style="margin-top: 10px; border-top: 1px solid var(--border-color); padding-top: 10px; text-align: left;">
+                    <button class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem; border-color: #ef4444; color: #ef4444;" onclick="rejectBooking('${b.id}')"><i data-lucide="x"></i> إلغاء الحجز</button>
+                </div>
+             `;
+        }
+        
         const card = document.createElement('div');
         card.style.cssText = 'background: rgba(15, 23, 42, 0.4); border: 1px solid var(--border-color); border-radius: 12px; padding: 15px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px;';
         card.innerHTML = `
@@ -226,11 +245,36 @@ async function loadBookingsList(pitchId, bookings) {
                 <p>⏰ <strong>الوقت:</strong> ${timeStr}</p>
                 <p>ℹ️ <strong>النوع:</strong> ${sourceLabel} ${b.notes ? `(${b.notes})` : ''}</p>
             </div>
+            ${actionBtns}
         `;
         container.appendChild(card);
     });
     lucide.createIcons();
 }
+
+window.confirmBooking = async function(bookingId) {
+    if (!confirm('هل أنت متأكد من تأكيد هذا الحجز؟')) return;
+    try {
+        const { error } = await supabaseClient.from('bookings').update({ status: 'confirmed' }).eq('id', bookingId);
+        if (error) throw error;
+        alert('تم تأكيد الحجز بنجاح!');
+        await loadSlots(currentPitchId);
+    } catch (err) {
+        alert('حدث خطأ أثناء التأكيد: ' + err.message);
+    }
+};
+
+window.rejectBooking = async function(bookingId) {
+    if (!confirm('هل أنت متأكد من إلغاء/رفض هذا الحجز؟ (الميعاد هيرجع يظهر للناس تاني)')) return;
+    try {
+        const { error } = await supabaseClient.from('bookings').update({ status: 'cancelled' }).eq('id', bookingId);
+        if (error) throw error;
+        alert('تم رفض/إلغاء الحجز بنجاح!');
+        await loadSlots(currentPitchId);
+    } catch (err) {
+        alert('حدث خطأ أثناء الرفض: ' + err.message);
+    }
+};
 
 // Manual Booking Modal
 window.openManualModal = function(slotId, dayOfWeek, startTime, endTime) {
