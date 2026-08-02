@@ -133,67 +133,27 @@ async function renderSlots(slots, bookings) {
     const listDiv = document.getElementById('slotsList');
     listDiv.innerHTML = '';
     
-    const now = new Date();
-    const activeBookings = bookings.filter(b => {
-        if (b.status === 'rejected' || b.status === 'cancelled') return false;
-        if (b.status === 'pending_payment' && (now - new Date(b.created_at)) / 60000 > 10) return false;
-        return true;
-    });
-    
     slots.forEach(slot => {
-        const nextDate = getNextDateForDay(slot.day_of_week);
-        const slotStart = timeStrToMins(slot.start_time);
-        const slotEnd = timeStrToMins(slot.end_time);
+        const dayName = daysMap[slot.day_of_week];
+        const startF = formatTimeDisplay(slot.start_time);
+        const endF = formatTimeDisplay(slot.end_time);
 
-        const booking = activeBookings.find(b => {
-            if (b.booking_date !== nextDate) return false;
-            
-            let bs = 0, be = 0;
-            if (b.start_time && b.end_time) {
-                bs = timeStrToMins(b.start_time);
-                be = timeStrToMins(b.end_time);
-            } else if (b.slot_id === slot.id) {
-                bs = slotStart;
-                be = slotEnd;
-            } else {
-                return false;
-            }
-            return bs < slotEnd && be > slotStart;
-        });
-
-        const isBooked = !!booking;
-        
         const el = document.createElement('div');
-        el.className = `slot-card${isBooked ? ' manual-booked' : ''}`;
-        
-        let labelText = 'متاح';
-        let statusStyle = '';
-        if (isBooked) {
-            labelText = booking.source === 'manual' ? 'محجوز يدوياً' : 'محجوز أونلاين';
-            statusStyle = 'background: rgba(245, 158, 11, 0.2); color: #f59e0b;';
-        }
-        const statusBadge = `<span class="status-badge" style="${statusStyle}">${labelText}</span>`;
-        
-        const actionBtn = isBooked
-            ? `<button class="release-btn" onclick="releaseManualBooking('${booking.id}', '${slot.id}')">
-                 🔓 فك القفل وإتاحة الموعد
-               </button>`
-            : `<button class="manual-book-btn" onclick="openManualModal('${slot.id}', '${nextDate}', '${daysMap[slot.day_of_week]}', '${formatTimeDisplay(slot.start_time)}', '${formatTimeDisplay(slot.end_time)}', '${slot.start_time}', '${slot.end_time}')">
-                 📋 حجز يدوي (كاش/تليفون)
-               </button>`;
+        el.className = 'slot-card';
         
         el.innerHTML = `
-            <div class="slot-day">${daysMap[slot.day_of_week]}</div>
-            <div class="slot-time" style="justify-content: center; font-size: 0.9rem; margin-top: 5px;">
-                <i data-lucide="clock" style="width: 14px; height: 14px;"></i>
-                ${formatTimeDisplay(slot.start_time)} - ${formatTimeDisplay(slot.end_time)}
+            <div class="slot-day">${dayName}</div>
+            <div class="slot-time" style="justify-content:center; font-size:1rem; margin-top:5px; color:var(--primary-color);">
+                ${startF} - ${endF}
             </div>
-            <div style="margin-top: 8px;">${statusBadge}</div>
-            ${isBooked && booking.notes ? `<p style="font-size:0.8rem; color:var(--text-muted); margin-top:5px;">${booking.notes}</p>` : ''}
-            ${isBooked && booking.customer_name && booking.source !== 'manual' ? `<p style="font-size:0.8rem; color:var(--text-muted); margin-top:5px;">العميل: ${booking.customer_name}</p>` : ''}
-            ${actionBtn}
-            <button class="delete-btn" onclick="deleteSlot('${slot.id}')" title="حذف الموعد">
-                <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
+            <div style="font-size:0.8rem; color:var(--text-muted); text-align:center; margin-top:5px;">ساعات العمل</div>
+            
+            <button class="delete-btn" onclick="deleteSlot('${slot.id}')" title="حذف">
+                <i data-lucide="trash-2" style="width: 18px; height: 18px;"></i>
+            </button>
+            
+            <button class="manual-book-btn" onclick="openManualModal('${slot.id}', '${slot.day_of_week}', '${slot.start_time}', '${slot.end_time}')">
+                ➕ إضافة حجز يدوي
             </button>
         `;
         listDiv.appendChild(el);
@@ -243,8 +203,12 @@ async function loadBookingsList(pitchId, bookings) {
             timeStr = `${formatTimeDisplay(b.start_time)} - ${formatTimeDisplay(b.end_time)}`;
         }
             
-        const statusLabel = b.status === 'confirmed' ? 'مؤكد ✅' : 'في انتظار الدفع (مؤقت)';
-        const statusColor = b.status === 'confirmed' ? '#10b981' : '#f59e0b';
+        const statusLabel = b.status === 'confirmed' 
+            ? 'مؤكد ✅' 
+            : b.payment_screenshot 
+                ? 'إيصال مرفوع — انتظار تأكيدك ⏳' 
+                : 'في انتظار الدفع';
+        const statusColor = b.status === 'confirmed' ? '#10b981' : b.payment_screenshot ? '#8b5cf6' : '#f59e0b';
         const sourceLabel = b.source === 'manual' ? 'حجز يدوي' : 'حجز أونلاين';
         
         const card = document.createElement('div');
@@ -269,12 +233,11 @@ async function loadBookingsList(pitchId, bookings) {
 }
 
 // Manual Booking Modal
-window.openManualModal = function(slotId, dateStr, dayName, startTime, endTime, rawStart, rawEnd) {
+window.openManualModal = function(slotId, dayOfWeek, startTime, endTime) {
     document.getElementById('manualSlotId').value = slotId;
-    document.getElementById('manualBookingDate').value = dateStr;
-    window._manualStartTime = rawStart;
-    window._manualEndTime = rawEnd;
-    document.getElementById('manualSlotInfo').textContent = `${dayName} — ${startTime} إلى ${endTime} (${dateStr})`;
+    document.getElementById('manualBookingDate').value = getNextDateForDay(parseInt(dayOfWeek));
+    document.getElementById('manualStartTime').value = startTime;
+    document.getElementById('manualEndTime').value = endTime;
     document.getElementById('manualBookingModal').style.display = 'flex';
 };
 
@@ -290,7 +253,18 @@ async function handleManualBooking(e) {
     const errorDiv = document.getElementById('manualError');
     const slotId = document.getElementById('manualSlotId').value;
     const bookingDate = document.getElementById('manualBookingDate').value;
-    const notes = document.getElementById('manualNotes').value.trim();
+    const notes = document.getElementById('manualNotes').value || 'حجز يدوي';
+    const startTime = document.getElementById('manualStartTime').value;
+    const endTime = document.getElementById('manualEndTime').value;
+    
+    if (!startTime || !endTime) {
+        document.getElementById('manualError').textContent = 'لازم تختار وقت البداية والنهاية';
+        return;
+    }
+    if (startTime === endTime) {
+        document.getElementById('manualError').textContent = 'وقت البداية لا يمكن أن يساوي وقت النهاية';
+        return;
+    }
     
     errorDiv.textContent = '';
     btn.disabled = true;
@@ -302,14 +276,13 @@ async function handleManualBooking(e) {
             .insert([{
                 pitch_id: currentPitchId,
                 slot_id: slotId,
-                booking_date: bookingDate,
-                start_time: window._manualStartTime || null,
-                end_time: window._manualEndTime || null,
-                customer_name: notes || 'حجز يدوي',
+                customer_name: notes,
                 customer_phone: '00000000000',
                 status: 'confirmed',
                 source: 'manual',
-                notes: notes
+                booking_date: bookingDate,
+                start_time: startTime,
+                end_time: endTime
             }]);
             
         if (error) throw error;
@@ -413,38 +386,14 @@ function getCheckedDays() {
                 .map(cb => parseInt(cb.value));
 }
 
-function generateSlotTimes(startTime, endTime, durationMins) {
-    const slots = [];
-    let [sh, sm] = startTime.split(':').map(Number);
-    let [eh, em] = endTime.split(':').map(Number);
-    let startMins = sh * 60 + sm;
-    let endMins = eh * 60 + em;
-
-    if (endMins <= startMins) {
-        endMins += 24 * 60; // Handle overnight slots
-    }
-
-    while (startMins + durationMins <= endMins) {
-        const hStart = Math.floor((startMins % 1440) / 60);
-        const mStart = startMins % 60;
-        const slotStart = `${String(hStart).padStart(2,'0')}:${String(mStart).padStart(2,'0')}`;
-        
-        const slotEndMins = startMins + durationMins;
-        const hEnd = Math.floor((slotEndMins % 1440) / 60);
-        const mEnd = slotEndMins % 60;
-        const slotEnd = `${String(hEnd).padStart(2,'0')}:${String(mEnd).padStart(2,'0')}`;
-        
-        slots.push({ start: slotStart, end: slotEnd });
-        startMins += durationMins;
-    }
-    return slots;
+function generateSlotTimes(startTime, endTime) {
+    return [{ start: startTime, end: endTime }];
 }
 
 window.previewBulkSlots = function() {
     const days = getCheckedDays();
     const startTime = document.getElementById('bulkStartTime').value;
     const endTime = document.getElementById('bulkEndTime').value;
-    const duration = parseInt(document.getElementById('bulkDuration').value);
     const errorDiv = document.getElementById('bulkError');
 
     errorDiv.textContent = '';
@@ -452,21 +401,15 @@ window.previewBulkSlots = function() {
     if (!startTime || !endTime) { errorDiv.textContent = 'تأكد من اختيار وقت البداية والنهاية'; return; }
     if (startTime === endTime) { errorDiv.textContent = 'وقت البداية والنهاية مينفعش يكونوا زي بعض'; return; }
 
-    const slotTimes = generateSlotTimes(startTime, endTime, duration);
-    if (slotTimes.length === 0) { errorDiv.textContent = 'الوقت المختار مش كافي لحصة واحدة'; return; }
-
     const dayNames = { 0:'الأحد', 1:'الإثنين', 2:'الثلاثاء', 3:'الأربعاء', 4:'الخميس', 5:'الجمعة', 6:'السبت' };
     const previewDiv = document.getElementById('bulkPreview');
     const previewText = document.getElementById('bulkPreviewText');
 
     const dayLabels = days.map(d => dayNames[d]).join('، ');
-    const timeLabels = slotTimes.map(s => `${formatTimeDisplay(s.start)} – ${formatTimeDisplay(s.end)}`).join(' &nbsp;|&nbsp; ');
 
     previewText.innerHTML = `
         <strong>الأيام:</strong> ${dayLabels}<br>
-        <strong>عدد الحصص لكل يوم:</strong> ${slotTimes.length} حصة<br>
-        <strong>إجمالي المواعيد:</strong> ${days.length * slotTimes.length} ميعاد<br>
-        <strong>المواعيد:</strong> ${timeLabels}
+        <strong>ساعات العمل لكل يوم:</strong> من ${formatTimeDisplay(startTime)} إلى ${formatTimeDisplay(endTime)}<br>
     `;
     previewDiv.style.display = 'block';
 };
@@ -487,7 +430,6 @@ async function handleBulkSlots(e) {
     const days = getCheckedDays();
     const startTime = document.getElementById('bulkStartTime').value;
     const endTime = document.getElementById('bulkEndTime').value;
-    const duration = parseInt(document.getElementById('bulkDuration').value);
     const pitchId = document.getElementById('pitchIdBulk').value;
 
     errorDiv.textContent = '';
@@ -496,8 +438,7 @@ async function handleBulkSlots(e) {
     if (days.length === 0) { errorDiv.textContent = 'اختار يوم واحد على الأقل'; return; }
     if (startTime === endTime) { errorDiv.textContent = 'وقت البداية والنهاية مينفعش يكونوا زي بعض'; return; }
 
-    const slotTimes = generateSlotTimes(startTime, endTime, duration);
-    if (slotTimes.length === 0) { errorDiv.textContent = 'الوقت المختار مش كافي لحصة واحدة'; return; }
+    const slotTimes = generateSlotTimes(startTime, endTime);
 
     btn.disabled = true;
     btn.textContent = 'بيتولد المواعيد...';

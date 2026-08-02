@@ -132,14 +132,12 @@ async function handleReceiptUpload(e, bookingId) {
             
         const filePath = fileName; 
         
-        // Update booking status
+        // Update booking status via RPC (bypasses RLS for anon users)
         const { error: updateError } = await supabaseClient
-            .from('bookings')
-            .update({
-                status: 'confirmed',
-                payment_screenshot: filePath
-            })
-            .eq('id', bookingId);
+            .rpc('upload_booking_receipt', {
+                p_booking_id: bookingId,
+                p_screenshot: filePath
+            });
             
         if (updateError) throw new Error("تم الرفع ولكن حدث خطأ في تحديث الحجز: " + updateError.message);
         

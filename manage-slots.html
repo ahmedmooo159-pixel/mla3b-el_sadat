@@ -281,16 +281,7 @@
                                 </div>
                             </div>
 
-                            <div class="form-group" style="position:relative;">
-                                <label>مدة كل حصة</label>
-                                <select id="bulkDuration" style="appearance:none; cursor:pointer;">
-                                    <option value="60">ساعة (60 دقيقة)</option>
-                                    <option value="90">ساعة ونص (90 دقيقة)</option>
-                                    <option value="120">ساعتين (120 دقيقة)</option>
-                                    <option value="30">نص ساعة (30 دقيقة)</option>
-                                </select>
-                                <i data-lucide="chevron-down" style="position:absolute; left:15px; top:40px; color:var(--text-muted); pointer-events:none;"></i>
-                            </div>
+                            <!-- Removed bulk duration -->
 
                             <!-- Preview -->
                             <div id="bulkPreview" style="background:rgba(34,197,94,0.08); border:1px solid rgba(34,197,94,0.25); border-radius:12px; padding:15px; margin-bottom:15px; display:none;">
@@ -413,6 +404,16 @@
             <form id="manualBookingForm">
                 <input type="hidden" id="manualSlotId">
                 <input type="hidden" id="manualBookingDate">
+                <div style="display:flex; gap:15px; margin-bottom:15px;">
+                    <div class="form-group" style="flex:1;">
+                        <label>وقت البداية</label>
+                        <input type="time" id="manualStartTime" required>
+                    </div>
+                    <div class="form-group" style="flex:1;">
+                        <label>وقت النهاية</label>
+                        <input type="time" id="manualEndTime" required>
+                    </div>
+                </div>
                 <div class="form-group">
                     <label>ملاحظة (اختياري) — زي: اسم العميل</label>
                     <input type="text" id="manualNotes" placeholder="مثال: كابتن ماجد — دفع كاش">

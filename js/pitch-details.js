@@ -143,8 +143,8 @@ async function loadSlotsAndBookings(pitchId) {
 
 // ==========================================
 // BOOKING MODAL
-function openBookingModal(slotId, dateStr, dayName, displayDate, startF, endF, rawStart, rawEnd) {
-    window._pickerBookingData = { dateStr, startTime: rawStart, endTime: rawEnd, slotId };
+function openBookingModal(slotId, dateStr, dayName, displayDate, startF, endF, rawStart, rawEnd, price) {
+    window._pickerBookingData = { dateStr, startTime: rawStart, endTime: rawEnd, slotId, price };
     document.getElementById('modalSlotId').value = slotId;
     document.getElementById('modalBookingDate').value = dateStr;
     document.getElementById('bookingSlotInfo').innerHTML = `
@@ -305,79 +305,95 @@ function buildDaysTabs() {
 }
 
 function renderSlotsForDay(dateStr) {
+    currentActiveDateStr = dateStr;
     const slotsContainer = document.getElementById('slotsContainer');
     slotsContainer.innerHTML = '';
+    
+    const durationContainer = document.getElementById('durationContainer');
+    if (durationContainer) durationContainer.style.display = 'block';
     
     const dayInfo = _next7Days.find(d => d.dateStr === dateStr);
     if (!dayInfo) return;
     
-    const daySlots = _allSlots.filter(s => s.day_of_week === dayInfo.dayOfWeek);
-    daySlots.sort((a, b) => a.start_time.localeCompare(b.start_time));
+    const dayWorkingHours = _allSlots.filter(s => s.day_of_week === dayInfo.dayOfWeek);
     
     const now = new Date();
     let hasAvailableSlots = false;
     
-    daySlots.forEach(slot => {
-        if (dayInfo.dateStr === _next7Days[0].dateStr) {
-            const slotTime = new Date();
-            const [h, m] = slot.start_time.split(':');
-            slotTime.setHours(h, m, 0);
-            if (slotTime < now) return;
-        }
-
-        const slotStart = timeStrToMins(slot.start_time);
-        let slotEnd = timeStrToMins(slot.end_time);
-        if (slotEnd <= slotStart) slotEnd += 24 * 60;
-
-        const isBooked = _allBookings.some(b => {
-            if (b.booking_date !== dayInfo.dateStr) return false;
-            if (b.status === 'rejected' || b.status === 'cancelled') return false;
-            if (b.status === 'pending_payment' && (now - new Date(b.created_at)) / 60000 > 10) return false;
-
-            let bs = 0, be = 0;
-            if (b.start_time && b.end_time) {
-                bs = timeStrToMins(b.start_time);
-                be = timeStrToMins(b.end_time);
-                if (be <= bs) be += 24 * 60;
-            } else if (b.slot_id) {
-                const s = _allSlots.find(slotItem => slotItem.id === b.slot_id);
-                if (!s) return false;
-                bs = timeStrToMins(s.start_time);
-                be = timeStrToMins(s.end_time);
-                if (be <= bs) be += 24 * 60;
-            } else {
-                return false;
+    dayWorkingHours.forEach(workingBlock => {
+        let blockStartMins = timeStrToMins(workingBlock.start_time);
+        let blockEndMins = timeStrToMins(workingBlock.end_time);
+        if (blockEndMins <= blockStartMins) blockEndMins += 24 * 60; // Overnight
+        
+        // Generate possible start times in 30-min increments
+        for (let m = blockStartMins; m + currentSelectedDuration <= blockEndMins; m += 30) {
+            
+            if (dayInfo.dateStr === _next7Days[0].dateStr) {
+                const nowMins = now.getHours() * 60 + now.getMinutes();
+                if (m <= nowMins) continue;
             }
 
-            return bs < slotEnd && be > slotStart;
-        });
+            const reqStart = m;
+            const reqEnd = m + currentSelectedDuration;
 
-        if (!isBooked) {
-            hasAvailableSlots = true;
-            const el = document.createElement('div');
-            el.className = 'slot-card animate-fade-in';
-            const displayDate = dayInfo.dateObj.toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' });
-            const dayName = daysMap[dayInfo.dayOfWeek];
-            const startF = formatArabicTime(slot.start_time);
-            const endF = formatArabicTime(slot.end_time);
+            const isOverlapping = _allBookings.some(b => {
+                if (b.booking_date !== dayInfo.dateStr) return false;
+                if (b.status === 'rejected' || b.status === 'cancelled') return false;
+                if (b.status === 'pending_payment' && (now - new Date(b.created_at)) / 60000 > 10) return false;
 
-            el.innerHTML = `
-                <div class="slot-time" style="justify-content:center; font-size:1.1rem; margin-top:5px; color: var(--primary-color);">
-                    ${startF} - ${endF}
-                </div>
-                <div style="font-size:0.85rem; color:var(--text-muted); text-align:center; margin-top:5px;">
-                    السعر: ${window._pitchPrice || 0} جنيه
-                </div>
-                <button class="btn btn-primary btn-full" style="margin-top:15px; font-size:1rem; padding:10px;"
-                    onclick="openBookingModal('${slot.id}','${dayInfo.dateStr}','${dayName}','${displayDate}','${startF}','${endF}','${slot.start_time}','${slot.end_time}')">
-                    احجز الموعد
-                </button>
-                <button class="btn btn-full" style="margin-top:8px; font-size:0.85rem; padding:8px; background:rgba(139,92,246,0.15); border:1px solid #8b5cf6; color:#8b5cf6; border-radius:8px; cursor:pointer;"
-                    onclick="openRecurringModal('${slot.id}','${dayName}','${startF}','${endF}',window._pitchPrice||0)">
-                    🔁 حجز أسبوعي ثابت
-                </button>
-            `;
-            slotsContainer.appendChild(el);
+                let bs = 0, be = 0;
+                if (b.start_time && b.end_time) {
+                    bs = timeStrToMins(b.start_time);
+                    be = timeStrToMins(b.end_time);
+                    if (be <= bs) be += 24 * 60;
+                } else if (b.slot_id) {
+                    const s = _allSlots.find(slotItem => slotItem.id === b.slot_id);
+                    if (!s) return false;
+                    bs = timeStrToMins(s.start_time);
+                    be = timeStrToMins(s.end_time);
+                    if (be <= bs) be += 24 * 60;
+                } else {
+                    return false;
+                }
+                
+                return bs < reqEnd && be > reqStart;
+            });
+
+            if (!isOverlapping) {
+                hasAvailableSlots = true;
+                
+                const startStr = minsToTimeStr(reqStart);
+                const endStr = minsToTimeStr(reqEnd);
+                
+                const startF = formatArabicTime(startStr);
+                const endF = formatArabicTime(endStr);
+                
+                const displayDate = dayInfo.dateObj.toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' });
+                const dayName = daysMap[dayInfo.dayOfWeek];
+                
+                const price = Math.round((currentSelectedDuration / 60) * (window._pitchPrice || 0));
+
+                const el = document.createElement('div');
+                el.className = 'slot-card animate-fade-in';
+
+                el.innerHTML = `
+                    <div class="slot-time" style="justify-content:center; font-size:1.1rem; margin-top:5px; color: var(--primary-color);">
+                        ${startF} - ${endF}
+                    </div>
+                    <div style="font-size:0.85rem; color:var(--text-muted); text-align:center; margin-top:5px;">
+                        المدة: ${currentSelectedDuration / 60} ساعة | السعر: ${price} جنيه
+                    </div>
+                    <button class="btn btn-primary btn-full" style="margin-top:15px; font-size:1rem; padding:10px;"
+                        onclick="openBookingModal('${workingBlock.id}','${dayInfo.dateStr}','${dayName}','${displayDate}','${startF}','${endF}','${startStr}','${endStr}', ${price})">
+                        احجز الموعد
+                    </button>
+                    <button class="btn btn-full" style="margin-top:8px; font-size:0.85rem; padding:8px; background:rgba(139,92,246,0.15); border:1px solid #8b5cf6; color:#8b5cf6; border-radius:8px; cursor:pointer;"
+                        onclick="openRecurringModal('${workingBlock.id}','${dayName}','${startF}','${endF}', ${price}, '${startStr}', '${endStr}')">
+                        🔁 حجز أسبوعي ثابت
+                    </button>
+                `;
+                slotsContainer.appendChild(el);
+            }
         }
     });
     
@@ -385,7 +401,7 @@ function renderSlotsForDay(dateStr) {
         slotsContainer.innerHTML = `
             <div style="grid-column: 1 / -1; text-align: center; padding: 40px; background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border-color);">
                 <i data-lucide="calendar-x" style="width:48px;height:48px;color:var(--text-muted);margin-bottom:15px;"></i>
-                <p style="color:var(--text-muted); font-size:1.1rem;">كل المواعيد في اليوم ده محجوزة، جرب تختار يوم تاني.</p>
+                <p style="color:var(--text-muted); font-size:1.1rem;">مفيش مواعيد فاضية لـ المدة اللي اخترتها، جرب تغير المدة أو اختار يوم تاني.</p>
             </div>
         `;
     }
@@ -396,9 +412,10 @@ function renderSlotsForDay(dateStr) {
 // ==========================================
 // RECURRING BOOKING
 // ==========================================
-function openRecurringModal(slotId, dayName, startTime, endTime, pitchPrice) {
+function openRecurringModal(slotId, dayName, startF, endF, pitchPrice, rawStart, rawEnd) {
+    window._pickerRecurringData = { startTime: rawStart, endTime: rawEnd };
     document.getElementById('recurringSlotId').value = slotId;
-    document.getElementById('recurringSlotInfo').textContent = `كل ${dayName} — ${startTime} إلى ${endTime}`;
+    document.getElementById('recurringSlotInfo').textContent = `كل ${dayName} — ${startF} إلى ${endF}`;
     const deposit = Math.round(Number(pitchPrice) * 0.5);
     document.getElementById('recurringDepositAmount').textContent = deposit;
     document.getElementById('recurringModal').style.display = 'flex';

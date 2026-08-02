@@ -86,7 +86,10 @@ function renderBookings(bookings) {
         const pitch = slot.pitches;
         if (!pitch) return;
         
-        const statusObj = statusMap[booking.status] || { label: booking.status, color: '#94a3b8', icon: 'info' };
+        let statusObj = statusMap[booking.status] || { label: booking.status, color: '#94a3b8', icon: 'info' };
+        if (booking.status === 'pending_payment' && booking.payment_screenshot) {
+            statusObj = { label: 'إيصال مرفوع — في انتظار تأكيد الملعب ⏳', color: '#8b5cf6', icon: 'clock' };
+        }
         const bookingDate = new Date(booking.booking_date).toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
         
         const startT = booking.start_time || slot.start_time;
@@ -107,12 +110,16 @@ function renderBookings(bookings) {
 
         let payBtn = '';
         if (booking.status === 'pending_payment') {
-            const now = new Date();
-            const minsPassed = (now - new Date(booking.created_at)) / 60000;
-            if (minsPassed <= 10) {
-                payBtn = `<a href="pay-booking.html?id=${booking.id}" class="btn btn-primary" style="margin-top: 10px; width: 100%; text-decoration: none; display: block; text-align: center;"><i data-lucide="upload-cloud" style="width: 16px; height: 16px; vertical-align: middle;"></i> رفع إيصال الدفع (متبقي ${Math.max(0, Math.ceil(10 - minsPassed))} دقيقة)</a>`;
+            if (booking.payment_screenshot) {
+                payBtn = `<p style="color: #8b5cf6; font-size: 0.85rem; margin-top: 10px; text-align: center; font-weight: bold;">✅ تم رفع الإيصال بنجاح. بينتظروا تأكيد صاحب الملعب.</p>`;
             } else {
-                payBtn = `<p style="color: #ef4444; font-size: 0.85rem; margin-top: 10px; text-align: center; font-weight: bold;">⚠️ انتهت مهلة الدفع (10 دقائق)</p>`;
+                const now = new Date();
+                const minsPassed = (now - new Date(booking.created_at)) / 60000;
+                if (minsPassed <= 10) {
+                    payBtn = `<a href="pay-booking.html?id=${booking.id}" class="btn btn-primary" style="margin-top: 10px; width: 100%; text-decoration: none; display: block; text-align: center;"><i data-lucide="upload-cloud" style="width: 16px; height: 16px; vertical-align: middle;"></i> رفع إيصال الدفع (متبقي ${Math.max(0, Math.ceil(10 - minsPassed))} دقيقة)</a>`;
+                } else {
+                    payBtn = `<p style="color: #ef4444; font-size: 0.85rem; margin-top: 10px; text-align: center; font-weight: bold;">⚠️ انتهت مهلة الدفع (10 دقائق)</p>`;
+                }
             }
         }
         
