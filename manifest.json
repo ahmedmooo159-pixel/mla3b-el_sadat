@@ -1,20 +1,20 @@
 {
-  "name": "ملاعب مصر",
+  "name": "ملاعب مدينة السادات",
   "short_name": "ملاعب",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#0f172a",
-  "description": "منصة حجز وإدارة ملاعب كرة القدم في مصر",
+  "description": "منصة حجز وإدارة ملاعب كرة القدم في مدينة السادات",
   "orientation": "portrait",
   "icons": [
     {
-      "src": "/icon-192.png",
+      "src": "/Gemini_Generated_Image_mei2b0mei2b0mei2.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/icon-512.png",
+      "src": "/Gemini_Generated_Image_mei2b0mei2b0mei2.png",
       "sizes": "512x512",
       "type": "image/png"
     }

@@ -110,9 +110,9 @@ async function loadSlots(pitchId) {
 }
 
 function formatTimeDisplay(timeStr) {
+    if (window.formatEgyptianTime) return window.formatEgyptianTime(timeStr);
     const [h, m] = timeStr.split(':');
-    const d = new Date();
-    d.setHours(h, m);
+    const d = new Date(); d.setHours(h, m);
     return d.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
 }
 
@@ -354,8 +354,8 @@ async function handleAddSlot(e) {
     errorDiv.textContent = '';
     successDiv.textContent = '';
     
-    if (startTime >= endTime) {
-        errorDiv.textContent = "وقت النهاية يجب أن يكون بعد وقت البداية.";
+    if (startTime === endTime) {
+        errorDiv.textContent = "وقت النهاية لا يمكن أن يساوي وقت البداية.";
         return;
     }
     
@@ -418,12 +418,22 @@ function generateSlotTimes(startTime, endTime, durationMins) {
     let [sh, sm] = startTime.split(':').map(Number);
     let [eh, em] = endTime.split(':').map(Number);
     let startMins = sh * 60 + sm;
-    const endMins = eh * 60 + em;
+    let endMins = eh * 60 + em;
+
+    if (endMins <= startMins) {
+        endMins += 24 * 60; // Handle overnight slots
+    }
 
     while (startMins + durationMins <= endMins) {
-        const slotStart = `${String(Math.floor(startMins/60)).padStart(2,'0')}:${String(startMins%60).padStart(2,'0')}`;
+        const hStart = Math.floor((startMins % 1440) / 60);
+        const mStart = startMins % 60;
+        const slotStart = `${String(hStart).padStart(2,'0')}:${String(mStart).padStart(2,'0')}`;
+        
         const slotEndMins = startMins + durationMins;
-        const slotEnd = `${String(Math.floor(slotEndMins/60)).padStart(2,'0')}:${String(slotEndMins%60).padStart(2,'0')}`;
+        const hEnd = Math.floor((slotEndMins % 1440) / 60);
+        const mEnd = slotEndMins % 60;
+        const slotEnd = `${String(hEnd).padStart(2,'0')}:${String(mEnd).padStart(2,'0')}`;
+        
         slots.push({ start: slotStart, end: slotEnd });
         startMins += durationMins;
     }
@@ -440,7 +450,7 @@ window.previewBulkSlots = function() {
     errorDiv.textContent = '';
     if (days.length === 0) { errorDiv.textContent = 'اختار يوم واحد على الأقل'; return; }
     if (!startTime || !endTime) { errorDiv.textContent = 'تأكد من اختيار وقت البداية والنهاية'; return; }
-    if (startTime >= endTime) { errorDiv.textContent = 'وقت البداية لازم يكون قبل وقت النهاية'; return; }
+    if (startTime === endTime) { errorDiv.textContent = 'وقت البداية والنهاية مينفعش يكونوا زي بعض'; return; }
 
     const slotTimes = generateSlotTimes(startTime, endTime, duration);
     if (slotTimes.length === 0) { errorDiv.textContent = 'الوقت المختار مش كافي لحصة واحدة'; return; }
@@ -450,7 +460,7 @@ window.previewBulkSlots = function() {
     const previewText = document.getElementById('bulkPreviewText');
 
     const dayLabels = days.map(d => dayNames[d]).join('، ');
-    const timeLabels = slotTimes.map(s => `${s.start} – ${s.end}`).join(' &nbsp;|&nbsp; ');
+    const timeLabels = slotTimes.map(s => `${formatTimeDisplay(s.start)} – ${formatTimeDisplay(s.end)}`).join(' &nbsp;|&nbsp; ');
 
     previewText.innerHTML = `
         <strong>الأيام:</strong> ${dayLabels}<br>
@@ -484,7 +494,7 @@ async function handleBulkSlots(e) {
     successDiv.textContent = '';
 
     if (days.length === 0) { errorDiv.textContent = 'اختار يوم واحد على الأقل'; return; }
-    if (startTime >= endTime) { errorDiv.textContent = 'وقت البداية لازم يكون قبل وقت النهاية'; return; }
+    if (startTime === endTime) { errorDiv.textContent = 'وقت البداية والنهاية مينفعش يكونوا زي بعض'; return; }
 
     const slotTimes = generateSlotTimes(startTime, endTime, duration);
     if (slotTimes.length === 0) { errorDiv.textContent = 'الوقت المختار مش كافي لحصة واحدة'; return; }

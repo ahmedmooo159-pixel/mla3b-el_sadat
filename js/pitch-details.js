@@ -27,23 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const recurringForm = document.getElementById('recurringForm');
     if (recurringForm) recurringForm.addEventListener('submit', handleRecurringSubmit);
 
-    // Day picker change - reset start/end and rebuild start options
-    document.getElementById('pickerDay').addEventListener('change', () => {
-        const dateStr = document.getElementById('pickerDay').value;
-        document.getElementById('pickerStart').innerHTML = '<option value="">-- بداية --</option>';
-        document.getElementById('pickerEnd').innerHTML = '<option value="">-- نهاية --</option>';
-        document.getElementById('availabilityResult').style.display = 'none';
-        if (dateStr) buildStartPicker(dateStr);
-    });
-
-    // Start picker change - build end options then check availability
-    document.getElementById('pickerStart').addEventListener('change', () => {
-        document.getElementById('pickerEnd').innerHTML = '<option value="">-- نهاية --</option>';
-        document.getElementById('availabilityResult').style.display = 'none';
-        buildEndPicker();
-    });
-    
-    // End picker change handled via onchange="checkAvailability()" in HTML
+    // Removed old picker event listeners
 });
 
 // ==========================================
@@ -152,273 +136,22 @@ async function loadSlotsAndBookings(pitchId) {
 
     _allBookings = bookings || [];
 
-    buildDayPicker();
-    renderAllSlotsGrid();
+    buildDaysTabs();
 }
 
-// ==========================================
-// DAY PICKER
-// ==========================================
-function buildDayPicker() {
-    const select = document.getElementById('pickerDay');
-    select.innerHTML = '<option value="">اختار يوم</option>';
-
-    _next7Days.forEach(dayInfo => {
-        const hasSlots = _allSlots.some(s => s.day_of_week === dayInfo.dayOfWeek);
-        if (!hasSlots) return;
-        const opt = document.createElement('option');
-        opt.value = dayInfo.dateStr;
-        const isToday = dayInfo.dateStr === _next7Days[0].dateStr;
-        const label = isToday ? 'النهارده' : daysMap[dayInfo.dayOfWeek];
-        const displayDate = dayInfo.dateObj.toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' });
-        opt.textContent = `${label} (${displayDate})`;
-        select.appendChild(opt);
-    });
-}
+// Free-form picker removed in favor of tabbed slot selection
 
 // ==========================================
-// START TIME PICKER
-// ==========================================
-function buildStartPicker(dateStr) {
-    const startSel = document.getElementById('pickerStart');
-    startSel.innerHTML = '<option value="">-- بداية --</option>';
-
-    const now = new Date();
-    const nowMins = now.getHours() * 60 + now.getMinutes();
-    const isToday = dateStr === _next7Days[0].dateStr;
-
-    for (let mins = 0; mins < 24 * 60; mins += 30) {
-        if (isToday && mins <= nowMins) continue;
-        const timeStr = minsToTimeStr(mins);
-        const opt = document.createElement('option');
-        opt.value = timeStr;
-        opt.textContent = formatArabicTime(timeStr);
-        startSel.appendChild(opt);
-    }
-}
-
-// ==========================================
-// END TIME PICKER
-// ==========================================
-function buildEndPicker() {
-    const startTime = document.getElementById('pickerStart').value;
-    const endSel = document.getElementById('pickerEnd');
-    endSel.innerHTML = '<option value="">-- نهاية --</option>';
-
-    if (!startTime) return;
-
-    const startMins = timeStrToMins(startTime);
-    for (let mins = startMins + 30; mins <= 24 * 60; mins += 30) {
-        const timeStr = minsToTimeStr(mins);
-        const opt = document.createElement('option');
-        opt.value = timeStr;
-        opt.textContent = formatArabicTime(timeStr);
-        endSel.appendChild(opt);
-    }
-}
-
-// ==========================================
-// AVAILABILITY CHECK
-// ==========================================
-window.checkAvailability = function () {
-    const dateStr = document.getElementById('pickerDay').value;
-    const startTime = document.getElementById('pickerStart').value;
-    const endTime = document.getElementById('pickerEnd').value;
-    const resultDiv = document.getElementById('availabilityResult');
-
-    if (!dateStr || !startTime || !endTime) {
-        resultDiv.style.display = 'none';
-        return;
-    }
-
-    const startMins = timeStrToMins(startTime);
-    const endMins = timeStrToMins(endTime);
-    if (endMins <= startMins) { resultDiv.style.display = 'none'; return; }
-
-    const dayInfo = _next7Days.find(d => d.dateStr === dateStr);
-    if (!dayInfo) return;
-
-    const daySlots = _allSlots.filter(s => s.day_of_week === dayInfo.dayOfWeek);
-    resultDiv.style.display = 'block';
-
-    if (daySlots.length === 0) {
-        resultDiv.innerHTML = `
-            <div style="background:rgba(239,68,68,0.1); border:1px solid #ef4444; border-radius:12px; padding:15px;">
-                <p style="color:#ef4444; font-weight:bold;">❌ الملعب مغلق في هذا اليوم</p>
-            </div>`;
-        return;
-    }
-
-    // Helper: check if a 30-min block is inside working hours
-    function isInsideWorkingHours(mins) {
-        return daySlots.some(s => {
-            const ss = timeStrToMins(s.start_time);
-            const se = timeStrToMins(s.end_time);
-            return ss <= mins && (mins + 30) <= se;
-        });
-    }
-
-    // Helper: check if a 30-min block is booked
-    const now = new Date();
-    function isBlockBooked(mins) {
-        return _allBookings.some(b => {
-            if (b.booking_date !== dateStr) return false;
-            if (b.status === 'rejected' || b.status === 'cancelled') return false;
-            if (b.status === 'pending_payment' && (now - new Date(b.created_at)) / 60000 > 10) return false;
-            
-            let bs = 0, be = 0;
-            if (b.start_time && b.end_time) {
-                bs = timeStrToMins(b.start_time);
-                be = timeStrToMins(b.end_time);
-            } else if (b.slot_id) {
-                const slot = _allSlots.find(s => s.id === b.slot_id);
-                if (!slot) return false;
-                bs = timeStrToMins(slot.start_time);
-                be = timeStrToMins(slot.end_time);
-            } else {
-                return false;
-            }
-            return bs <= mins && (mins + 30) <= be;
-        });
-    }
-
-    // Check if the requested range is inside working hours
-    let outOfHours = false;
-    for (let m = startMins; m < endMins; m += 30) {
-        if (!isInsideWorkingHours(m)) {
-            outOfHours = true;
-            break;
-        }
-    }
-
-    if (outOfHours) {
-        const workingHoursStr = daySlots.map(s => `${formatArabicTime(s.start_time)} - ${formatArabicTime(s.end_time)}`).join('، ');
-        resultDiv.innerHTML = `
-            <div style="background:rgba(239,68,68,0.1); border:1px solid #ef4444; border-radius:12px; padding:15px;">
-                <p style="color:#ef4444; font-weight:bold;">❌ هذا الوقت خارج ساعات عمل الملعب</p>
-                <p style="color:var(--text-muted); font-size:0.9rem; margin-top:5px;">ساعات العمل المتاحة: ${workingHoursStr}</p>
-            </div>`;
-        return;
-    }
-
-    // Check conflicts
-    const conflicts = [];
-    for (let m = startMins; m < endMins; m += 30) {
-        if (isBlockBooked(m)) {
-            conflicts.push(m);
-        }
-    }
-
-    if (conflicts.length === 0) {
-        // ✅ Fully available
-        const hours = ((endMins - startMins) / 60).toFixed(1).replace('.0', '');
-        const price = Math.round((endMins - startMins) / 60 * (window._pitchPrice || 0));
-
-        resultDiv.innerHTML = `
-            <div style="background:rgba(34,197,94,0.1); border:1px solid var(--primary-color); border-radius:12px; padding:20px;">
-                <p style="color:var(--primary-color); font-weight:bold; font-size:1.1rem; margin-bottom:10px;">✅ الوقت ده متاح تماماً!</p>
-                <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:5px;">
-                    <strong>${daysMap[dayInfo.dayOfWeek]}</strong> — ${formatArabicTime(startTime)} إلى ${formatArabicTime(endTime)}
-                    &nbsp;|&nbsp; <strong>${hours} ساعة</strong>
-                    ${price > 0 ? `&nbsp;|&nbsp; السعر: <strong style="color:var(--primary-color);">${price} جنيه</strong>` : ''}
-                </p>
-                <button class="btn btn-primary" style="width:100%; margin-top:15px; padding:12px;"
-                    onclick="openBookingModalFromPicker('${dateStr}','${startTime}','${endTime}','${daysMap[dayInfo.dayOfWeek]}')">
-                    🚀 احجز دلوقتي
-                </button>
-            </div>`;
-    } else {
-        // ⚠️ Conflict — find the max booking end time that overlaps with the request
-        let maxConflictEnd = 0;
-        _allBookings.forEach(b => {
-            if (b.booking_date !== dateStr) return;
-            if (b.status === 'rejected' || b.status === 'cancelled') return;
-            if (b.status === 'pending_payment' && (now - new Date(b.created_at)) / 60000 > 10) return;
-            
-            let bs = 0, be = 0;
-            if (b.start_time && b.end_time) {
-                bs = timeStrToMins(b.start_time);
-                be = timeStrToMins(b.end_time);
-            } else if (b.slot_id) {
-                const slot = _allSlots.find(s => s.id === b.slot_id);
-                if (slot) {
-                    bs = timeStrToMins(slot.start_time);
-                    be = timeStrToMins(slot.end_time);
-                }
-            }
-            
-            if (bs < endMins && be > startMins) {
-                if (be > maxConflictEnd) maxConflictEnd = be;
-            }
-        });
-
-        const maxConflictEndStr = minsToTimeStr(maxConflictEnd);
-
-        // Calculate all free blocks for this day to show alternatives
-        const freeIntervals = [];
-        let currentFreeStart = null;
-        for (let m = 0; m < 24 * 60; m += 30) {
-            if (isInsideWorkingHours(m) && !isBlockBooked(m)) {
-                if (currentFreeStart === null) currentFreeStart = m;
-            } else {
-                if (currentFreeStart !== null) {
-                    freeIntervals.push({ start: currentFreeStart, end: m });
-                    currentFreeStart = null;
-                }
-            }
-        }
-        if (currentFreeStart !== null) {
-            freeIntervals.push({ start: currentFreeStart, end: 24 * 60 });
-        }
-
-        const freeTimesStr = freeIntervals.map(interval => 
-            `${formatArabicTime(minsToTimeStr(interval.start))} – ${formatArabicTime(minsToTimeStr(interval.end))}`
-        ).join('، ');
-
-        resultDiv.innerHTML = `
-            <div style="background:rgba(245,158,11,0.1); border:1px solid #f59e0b; border-radius:12px; padding:20px;">
-                <p style="color:#f59e0b; font-weight:bold; font-size:1rem; margin-bottom:8px;">⚠️ الوقت ده محجوز جزئياً أو كلياً!</p>
-                <p style="color:var(--text-muted); font-size:0.9rem;">
-                    الحجز الموجود هيخلص الساعة <strong style="color:#f59e0b;">${formatArabicTime(maxConflictEndStr)}</strong>
-                </p>
-                <div style="margin-top:12px; padding-top:12px; border-top:1px solid rgba(245,158,11,0.3);">
-                    <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:6px;">📅 الفترات الفاضية المتاحة في هذا اليوم:</p>
-                    <p style="color:var(--primary-color); font-weight:bold; font-size:0.9rem;">${freeTimesStr || 'لا توجد مواعيد متاحة في هذا اليوم.'}</p>
-                </div>
-            </div>`;
-    }
-
-    lucide.createIcons();
-};
-
-// ==========================================
-// BOOKING MODAL — from time picker
-// ==========================================
-window.openBookingModalFromPicker = function (dateStr, startTime, endTime, dayName) {
-    window._pickerBookingData = { dateStr, startTime, endTime };
-    const displayDate = new Date(dateStr + 'T00:00:00').toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' });
-    document.getElementById('modalSlotId').value = '';
-    document.getElementById('modalBookingDate').value = dateStr;
-    document.getElementById('bookingSlotInfo').innerHTML = `
-        <i data-lucide="calendar" style="width:16px;height:16px;vertical-align:middle;"></i>
-        الموعد: ${dayName} ${displayDate}<br>
-        <i data-lucide="clock" style="width:16px;height:16px;vertical-align:middle;"></i>
-        الوقت: ${formatArabicTime(startTime)} إلى ${formatArabicTime(endTime)}
-    `;
-    document.getElementById('bookingModal').style.display = 'flex';
-    lucide.createIcons();
-};
-
-// BOOKING MODAL — from slots grid
-function openBookingModal(slotId, dateStr, dayName, displayDate, startTime, endTime) {
-    window._pickerBookingData = { dateStr, startTime, endTime, slotId };
+// BOOKING MODAL
+function openBookingModal(slotId, dateStr, dayName, displayDate, startF, endF, rawStart, rawEnd) {
+    window._pickerBookingData = { dateStr, startTime: rawStart, endTime: rawEnd, slotId };
     document.getElementById('modalSlotId').value = slotId;
     document.getElementById('modalBookingDate').value = dateStr;
     document.getElementById('bookingSlotInfo').innerHTML = `
         <i data-lucide="calendar" style="width:16px;height:16px;vertical-align:middle;"></i>
         الموعد: ${dayName} ${displayDate}<br>
         <i data-lucide="clock" style="width:16px;height:16px;vertical-align:middle;"></i>
-        الوقت: ${startTime} إلى ${endTime}
+        الوقت: ${startF} إلى ${endF}
     `;
     document.getElementById('bookingModal').style.display = 'flex';
     lucide.createIcons();
@@ -462,7 +195,8 @@ async function handleBookingSubmit(e) {
             .eq('booking_date', bookingDate);
 
         const startMins = timeStrToMins(startTime);
-        const endMins = timeStrToMins(endTime);
+        let endMins = timeStrToMins(endTime);
+        if (endMins <= startMins) endMins += 24 * 60;
         const now = new Date();
 
         const isOverlapping = (existing || []).some(b => {
@@ -473,11 +207,13 @@ async function handleBookingSubmit(e) {
             if (b.start_time && b.end_time) {
                 bs = timeStrToMins(b.start_time);
                 be = timeStrToMins(b.end_time);
+                if (be <= bs) be += 24 * 60;
             } else if (b.slot_id) {
                 const slot = _allSlots.find(s => s.id === b.slot_id);
                 if (!slot) return false;
                 bs = timeStrToMins(slot.start_time);
                 be = timeStrToMins(slot.end_time);
+                if (be <= bs) be += 24 * 60;
             } else {
                 return false;
             }
@@ -525,84 +261,135 @@ async function handleBookingSubmit(e) {
     }
 }
 
-// ==========================================
-// ALL SLOTS GRID (collapsible)
-// ==========================================
-function renderAllSlotsGrid() {
-    const slotsContainer = document.getElementById('slotsContainer');
-    if (!_allSlots || _allSlots.length === 0) return;
-
-    const now = new Date();
-    const cards = [];
+function buildDaysTabs() {
+    const tabsContainer = document.getElementById('daysTabsContainer');
+    tabsContainer.innerHTML = '';
+    
+    let firstAvailableDay = null;
 
     _next7Days.forEach(dayInfo => {
-        const daySlots = _allSlots.filter(s => s.day_of_week === dayInfo.dayOfWeek);
-        daySlots.sort((a, b) => a.start_time.localeCompare(b.start_time));
+        const hasSlots = _allSlots.some(s => s.day_of_week === dayInfo.dayOfWeek);
+        if (!hasSlots) return;
+        
+        if (!firstAvailableDay) firstAvailableDay = dayInfo.dateStr;
 
-        daySlots.forEach(slot => {
-            if (dayInfo.dateStr === _next7Days[0].dateStr) {
-                const slotTime = new Date();
-                const [h, m] = slot.start_time.split(':');
-                slotTime.setHours(h, m, 0);
-                if (slotTime < now) return;
+        const isToday = dayInfo.dateStr === _next7Days[0].dateStr;
+        const label = isToday ? 'النهارده' : daysMap[dayInfo.dayOfWeek];
+        const displayDate = dayInfo.dateObj.toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' });
+        
+        const tab = document.createElement('div');
+        tab.className = 'day-tab';
+        tab.dataset.date = dayInfo.dateStr;
+        tab.innerHTML = `
+            <div class="day-name">${label}</div>
+            <div class="day-date">${displayDate}</div>
+        `;
+        
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.day-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            renderSlotsForDay(dayInfo.dateStr);
+        });
+        
+        tabsContainer.appendChild(tab);
+    });
+    
+    if (firstAvailableDay) {
+        document.querySelector(`.day-tab[data-date="${firstAvailableDay}"]`).classList.add('active');
+        renderSlotsForDay(firstAvailableDay);
+    } else {
+        document.getElementById('daysTabsContainer').style.display = 'none';
+        document.getElementById('slotsContainer').innerHTML = '';
+        document.getElementById('noSlotsMsg').style.display = 'block';
+    }
+}
+
+function renderSlotsForDay(dateStr) {
+    const slotsContainer = document.getElementById('slotsContainer');
+    slotsContainer.innerHTML = '';
+    
+    const dayInfo = _next7Days.find(d => d.dateStr === dateStr);
+    if (!dayInfo) return;
+    
+    const daySlots = _allSlots.filter(s => s.day_of_week === dayInfo.dayOfWeek);
+    daySlots.sort((a, b) => a.start_time.localeCompare(b.start_time));
+    
+    const now = new Date();
+    let hasAvailableSlots = false;
+    
+    daySlots.forEach(slot => {
+        if (dayInfo.dateStr === _next7Days[0].dateStr) {
+            const slotTime = new Date();
+            const [h, m] = slot.start_time.split(':');
+            slotTime.setHours(h, m, 0);
+            if (slotTime < now) return;
+        }
+
+        const slotStart = timeStrToMins(slot.start_time);
+        let slotEnd = timeStrToMins(slot.end_time);
+        if (slotEnd <= slotStart) slotEnd += 24 * 60;
+
+        const isBooked = _allBookings.some(b => {
+            if (b.booking_date !== dayInfo.dateStr) return false;
+            if (b.status === 'rejected' || b.status === 'cancelled') return false;
+            if (b.status === 'pending_payment' && (now - new Date(b.created_at)) / 60000 > 10) return false;
+
+            let bs = 0, be = 0;
+            if (b.start_time && b.end_time) {
+                bs = timeStrToMins(b.start_time);
+                be = timeStrToMins(b.end_time);
+                if (be <= bs) be += 24 * 60;
+            } else if (b.slot_id) {
+                const s = _allSlots.find(slotItem => slotItem.id === b.slot_id);
+                if (!s) return false;
+                bs = timeStrToMins(s.start_time);
+                be = timeStrToMins(s.end_time);
+                if (be <= bs) be += 24 * 60;
+            } else {
+                return false;
             }
 
-            const isBooked = _allBookings.some(b => {
-                if (b.booking_date !== dayInfo.dateStr) return false;
-                if (b.status === 'rejected' || b.status === 'cancelled') return false;
-                if (b.status === 'pending_payment' && (now - new Date(b.created_at)) / 60000 > 10) return false;
-
-                let bs = 0, be = 0;
-                if (b.start_time && b.end_time) {
-                    bs = timeStrToMins(b.start_time);
-                    be = timeStrToMins(b.end_time);
-                } else if (b.slot_id) {
-                    const s = _allSlots.find(slotItem => slotItem.id === b.slot_id);
-                    if (!s) return false;
-                    bs = timeStrToMins(s.start_time);
-                    be = timeStrToMins(s.end_time);
-                } else {
-                    return false;
-                }
-
-                const slotStart = timeStrToMins(slot.start_time);
-                const slotEnd = timeStrToMins(slot.end_time);
-                return bs < slotEnd && be > slotStart;
-            });
-
-            if (!isBooked) cards.push({ slot, dateInfo: dayInfo });
+            return bs < slotEnd && be > slotStart;
         });
-    });
 
-    if (cards.length === 0) {
-        slotsContainer.innerHTML = '<p style="color:var(--text-muted); padding:20px 0;">كل المواعيد محجوزة للأسبوع القادم.</p>';
-        return;
+        if (!isBooked) {
+            hasAvailableSlots = true;
+            const el = document.createElement('div');
+            el.className = 'slot-card animate-fade-in';
+            const displayDate = dayInfo.dateObj.toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' });
+            const dayName = daysMap[dayInfo.dayOfWeek];
+            const startF = formatArabicTime(slot.start_time);
+            const endF = formatArabicTime(slot.end_time);
+
+            el.innerHTML = `
+                <div class="slot-time" style="justify-content:center; font-size:1.1rem; margin-top:5px; color: var(--primary-color);">
+                    ${startF} - ${endF}
+                </div>
+                <div style="font-size:0.85rem; color:var(--text-muted); text-align:center; margin-top:5px;">
+                    السعر: ${window._pitchPrice || 0} جنيه
+                </div>
+                <button class="btn btn-primary btn-full" style="margin-top:15px; font-size:1rem; padding:10px;"
+                    onclick="openBookingModal('${slot.id}','${dayInfo.dateStr}','${dayName}','${displayDate}','${startF}','${endF}','${slot.start_time}','${slot.end_time}')">
+                    احجز الموعد
+                </button>
+                <button class="btn btn-full" style="margin-top:8px; font-size:0.85rem; padding:8px; background:rgba(139,92,246,0.15); border:1px solid #8b5cf6; color:#8b5cf6; border-radius:8px; cursor:pointer;"
+                    onclick="openRecurringModal('${slot.id}','${dayName}','${startF}','${endF}',window._pitchPrice||0)">
+                    🔁 حجز أسبوعي ثابت
+                </button>
+            `;
+            slotsContainer.appendChild(el);
+        }
+    });
+    
+    if (!hasAvailableSlots) {
+        slotsContainer.innerHTML = \`
+            <div style="grid-column: 1 / -1; text-align: center; padding: 40px; background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border-color);">
+                <i data-lucide="calendar-x" style="width:48px;height:48px;color:var(--text-muted);margin-bottom:15px;"></i>
+                <p style="color:var(--text-muted); font-size:1.1rem;">كل المواعيد في اليوم ده محجوزة، جرب تختار يوم تاني.</p>
+            </div>
+        \`;
     }
-
-    slotsContainer.innerHTML = '';
-    cards.forEach(item => {
-        const el = document.createElement('div');
-        el.className = 'slot-card';
-        const displayDate = item.dateInfo.dateObj.toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' });
-        const dayName = daysMap[item.dateInfo.dayOfWeek];
-        const startF = formatArabicTime(item.slot.start_time);
-        const endF = formatArabicTime(item.slot.end_time);
-
-        el.innerHTML = `
-            <div class="slot-day" style="font-size:1rem;">${dayName} ${displayDate}</div>
-            <div class="slot-time" style="justify-content:center; font-size:0.95rem; margin-top:5px;">${startF} - ${endF}</div>
-            <button class="btn btn-outline btn-full" style="margin-top:15px; font-size:0.9rem; padding:8px;"
-                onclick="openBookingModal('${item.slot.id}','${item.dateInfo.dateStr}','${dayName}','${displayDate}','${startF}','${endF}')">
-                احجز هذا الموعد
-            </button>
-            <button class="btn btn-full" style="margin-top:8px; font-size:0.85rem; padding:7px; background:rgba(139,92,246,0.15); border:1px solid #8b5cf6; color:#8b5cf6; border-radius:8px; cursor:pointer;"
-                onclick="openRecurringModal('${item.slot.id}','${dayName}','${startF}','${endF}',window._pitchPrice||0)">
-                🔁 حجز أسبوعي ثابت
-            </button>
-        `;
-        slotsContainer.appendChild(el);
-    });
-
+    
     lucide.createIcons();
 }
 
@@ -679,6 +466,7 @@ function minsToTimeStr(mins) {
 }
 
 function formatArabicTime(timeStr) {
+    if (window.formatEgyptianTime) return window.formatEgyptianTime(timeStr);
     const [h, m] = timeStr.split(':');
     const d = new Date();
     d.setHours(h, m);

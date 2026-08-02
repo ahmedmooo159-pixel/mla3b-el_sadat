@@ -12,6 +12,31 @@
 
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#0f172a">
+    <style>
+        .days-tabs::-webkit-scrollbar { height: 6px; }
+        .days-tabs::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 10px; }
+        .day-tab {
+            padding: 12px 20px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.3s ease;
+            text-align: center;
+            min-width: 110px;
+            flex-shrink: 0;
+        }
+        .day-tab:hover { border-color: var(--primary-color); }
+        .day-tab.active {
+            background: var(--primary-color);
+            color: #fff;
+            border-color: var(--primary-color);
+            box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
+        }
+        .day-tab .day-name { font-weight: bold; font-size: 1rem; margin-bottom: 4px; }
+        .day-tab .day-date { font-size: 0.8rem; opacity: 0.8; }
+    </style>
 </head>
 <body>
     <div class="app-container">
@@ -57,48 +82,18 @@
                     
                     <div class="slots-section">
                         <h3 style="margin-bottom: 20px; margin-top: 40px; font-size: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
-                            احجز موعدك ⏰
+                            اختار موعد الحجز ⏰
                         </h3>
 
-                        <!-- Free-form picker -->
-                        <div id="timePickerPanel" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 20px; padding: 25px; margin-bottom: 25px;">
-                            <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 20px;">اختار اليوم والوقت اللي عايزه — وهنشوف لك الإتاحة على طول 👇</p>
-                            
-                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
-                                <div class="form-group" style="margin: 0;">
-                                    <label>اليوم</label>
-                                    <select id="pickerDay" onchange="checkAvailability()" style="cursor:pointer;">
-                                        <option value="">اختار يوم</option>
-                                    </select>
-                                </div>
-                                <div class="form-group" style="margin: 0;">
-                                    <label>من الساعة</label>
-                                    <select id="pickerStart" onchange="checkAvailability()" style="cursor:pointer;">
-                                        <option value="">-- بداية --</option>
-                                    </select>
-                                </div>
-                                <div class="form-group" style="margin: 0;">
-                                    <label>لحد الساعة</label>
-                                    <select id="pickerEnd" onchange="checkAvailability()" style="cursor:pointer;">
-                                        <option value="">-- نهاية --</option>
-                                    </select>
-                                </div>
-                            </div>
+                        <div id="timePickerPanel" style="display: none;"></div>
 
-                            <!-- Availability Result -->
-                            <div id="availabilityResult" style="margin-top: 20px; display: none;"></div>
+                        <div id="daysTabsContainer" class="days-tabs" style="display: flex; overflow-x: auto; gap: 10px; padding-bottom: 15px; margin-bottom: 20px;">
+                            <!-- Tabs populated by JS -->
                         </div>
 
-                        <!-- All available slots grid (collapsed by default) -->
-                        <details style="margin-top: 10px;">
-                            <summary style="cursor: pointer; color: var(--text-muted); font-size: 0.9rem; padding: 10px 0; list-style: none; display: flex; align-items: center; gap: 8px;">
-                                <i data-lucide="calendar-days" style="width: 16px; height: 16px;"></i>
-                                عرض كل المواعيد المتاحة في الأسبوع القادم
-                            </summary>
-                            <div id="slotsContainer" class="slots-grid" style="margin-top: 15px;">
-                                <!-- Slots will be populated here -->
-                            </div>
-                        </details>
+                        <div id="slotsContainer" class="slots-grid">
+                            <!-- Slots will be populated here -->
+                        </div>
                         
                         <div id="noSlotsMsg" class="empty-state" style="display: none; padding: 30px;">
                             <i data-lucide="calendar-x"></i>

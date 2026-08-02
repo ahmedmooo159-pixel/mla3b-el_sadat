@@ -97,3 +97,22 @@ document.addEventListener('DOMContentLoaded', () => {
     // Run after a short delay so layout stabilizes
     setTimeout(checkPendingBooking, 500);
 });
+
+// Global Helper for Arabic Time formatting
+window.formatEgyptianTime = function(timeStr) {
+    if (!timeStr) return '';
+    let h = parseInt(timeStr.split(':')[0], 10);
+    let m = parseInt(timeStr.split(':')[1], 10);
+    let period = '';
+    let hour12 = h % 12 || 12;
+    
+    if (h === 0) period = 'منتصف الليل';
+    else if (h < 12) period = 'صباحاً';
+    else if (h === 12) period = 'الظهر';
+    else if (h < 15) period = 'الظهر';
+    else if (h < 18) period = 'العصر';
+    else if (h < 20) period = 'المغرب';
+    else period = 'مساءً (بالليل)';
+    
+    return `${hour12}:${String(m).padStart(2, '0')} ${period}`;
+};

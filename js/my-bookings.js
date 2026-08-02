@@ -31,17 +31,15 @@ async function fetchAllBookings(phone) {
     try {
         // Fetch normal bookings
         const { data: bookings, error: bErr } = await supabaseClient
-            .from('bookings')
+            .rpc('get_bookings_by_phone', { p_phone: phone })
             .select(`id, status, booking_date, start_time, end_time, created_at, slots(day_of_week, start_time, end_time, pitches(name, location, price_per_hour, cancel_cutoff_hours, refund_percent_after_cutoff))`)
-            .eq('customer_phone', phone)
             .neq('source', 'manual')
             .order('created_at', { ascending: false });
         
         // Fetch recurring bookings
         const { data: recurring, error: rErr } = await supabaseClient
-            .from('recurring_bookings')
+            .rpc('get_recurring_bookings_by_phone', { p_phone: phone })
             .select(`*, slots(day_of_week, start_time, end_time, pitches(name, location)), recurring_occurrences(id, occurrence_date, status)`)
-            .eq('customer_phone', phone)
             .order('created_at', { ascending: false });
         
         loadingDiv.style.display = 'none';
@@ -65,6 +63,7 @@ async function fetchAllBookings(phone) {
 }
 
 function formatTimeDisplay(timeStr) {
+    if (window.formatEgyptianTime) return window.formatEgyptianTime(timeStr);
     const [h, m] = timeStr.split(':');
     const d = new Date(); d.setHours(h, m);
     return d.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
