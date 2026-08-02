@@ -27,12 +27,9 @@ async function loadPublicPitches() {
     const noResultsDiv = document.getElementById('noResults');
     
     try {
-        // Fetch pitches where subscription is active
+        // Fetch pitches with owner info via RPC
         const { data, error } = await supabaseClient
-            .from('pitches')
-            .select('*')
-            .eq('subscription_status', 'active')
-            .order('created_at', { ascending: false });
+            .rpc('get_active_pitches_with_owners');
             
         if (error) throw error;
         
@@ -118,8 +115,11 @@ function renderPitches(pitches) {
             card.innerHTML = `
                 <div class="pitch-card-img" style="background-image: url('${photoUrl}');"></div>
                 <div class="pitch-card-content">
-                    <h3>${pitch.name}</h3>
-                    <p class="pitch-location"><i data-lucide="map-pin" style="width: 14px; height: 14px;"></i> ${pitch.location}</p>
+                    <h3 style="margin-bottom:5px;">${pitch.name}</h3>
+                    <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:8px;">
+                        <i data-lucide="user" style="width: 14px; height: 14px; vertical-align: middle;"></i> المالك: ${pitch.owner_name || 'مالك الملعب'}
+                    </div>
+                    <p class="pitch-location"><i data-lucide="map-pin" style="width: 14px; height: 14px; vertical-align: middle;"></i> ${pitch.location}</p>
                     <div class="pitch-card-footer">
                         <span class="pitch-price"><strong>${pitch.price_per_hour}</strong> ج.م / ساعة</span>
                         <a href="pitch-details.html?id=${pitch.id}" class="btn btn-primary btn-sm" style="font-size: 0.9rem; padding: 6px 12px;">التفاصيل</a>

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
@@ -46,15 +46,17 @@
 
                     <div style="background-color: var(--bg-dark); border: 1px solid var(--border-color); padding: 25px; border-radius: 16px; margin-bottom: 30px; text-align: right;">
                         <h3 style="color: var(--primary-color); margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">هتحول فين؟ (أرقام الملعب)</h3>
-                        <p style="font-size: 1.1rem; margin-bottom: 10px;">
-                            <i data-lucide="smartphone" style="width: 20px; height: 20px; vertical-align: middle; color: #ef4444;"></i> 
-                            فودافون كاش: <strong id="vCashNum" style="user-select: all; font-size: 1.2rem; margin-right: 10px;">...</strong>
-                        </p>
+                        <div style="font-size: 1.1rem; margin-bottom: 15px; display: flex; align-items: center; justify-content: start;">
+                            <i data-lucide="smartphone" style="width: 20px; height: 20px; vertical-align: middle; color: #ef4444; margin-left: 5px;"></i> 
+                            فودافون كاش: <strong id="vCashNum" style="user-select: all; font-size: 1.2rem; margin: 0 10px;">...</strong>
+                            <button class="btn btn-outline btn-sm" onclick="copyToClipboard('vCashNum', this)" style="padding: 4px 8px; font-size: 0.8rem; border-color: var(--border-color); color: var(--text-muted);"><i data-lucide="copy" style="width: 14px; height: 14px; vertical-align: middle;"></i> نسخ</button>
+                        </div>
                         <div id="instaPayDiv" style="display: none;">
-                            <p style="font-size: 1.1rem;">
-                                <i data-lucide="link" style="width: 20px; height: 20px; vertical-align: middle; color: #8b5cf6;"></i> 
-                                إنستاباي: <strong id="instaLink" style="user-select: all; font-size: 1.2rem; margin-right: 10px;">...</strong>
-                            </p>
+                            <div style="font-size: 1.1rem; display: flex; align-items: center; justify-content: start;">
+                                <i data-lucide="link" style="width: 20px; height: 20px; vertical-align: middle; color: #8b5cf6; margin-left: 5px;"></i> 
+                                إنستاباي: <strong id="instaLink" style="user-select: all; font-size: 1.2rem; margin: 0 10px;">...</strong>
+                                <button class="btn btn-outline btn-sm" onclick="copyToClipboard('instaLink', this)" style="padding: 4px 8px; font-size: 0.8rem; border-color: var(--border-color); color: var(--text-muted);"><i data-lucide="copy" style="width: 14px; height: 14px; vertical-align: middle;"></i> نسخ</button>
+                            </div>
                         </div>
                     </div>
                     
@@ -101,6 +103,23 @@
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/service-worker.js');
+            });
+        }
+        
+        function copyToClipboard(elementId, btn) {
+            const text = document.getElementById(elementId).textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                const originalHtml = btn.innerHTML;
+                btn.innerHTML = '<i data-lucide="check" style="width: 14px; height: 14px; vertical-align: middle; color: #10b981;"></i> منسوخ';
+                btn.style.color = '#10b981';
+                btn.style.borderColor = '#10b981';
+                lucide.createIcons();
+                setTimeout(() => {
+                    btn.innerHTML = originalHtml;
+                    btn.style.color = 'var(--text-muted)';
+                    btn.style.borderColor = 'var(--border-color)';
+                    lucide.createIcons();
+                }, 2000);
             });
         }
     </script>

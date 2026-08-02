@@ -495,7 +495,8 @@ function timeStrToMins(timeStr) {
 }
 
 function minsToTimeStr(mins) {
-    return `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`;
+    const m = mins % (24 * 60);
+    return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 }
 
 function formatArabicTime(timeStr) {

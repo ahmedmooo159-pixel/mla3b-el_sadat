@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
@@ -92,6 +92,11 @@
                             <div class="form-group">
                                 <label>قيمة الاشتراك الشهري للملاعب (بالجنيه)</label>
                                 <input type="number" id="settingMonthlyFee" required>
+                            </div>
+                            <div class="form-group">
+                                <label>المناطق المدعومة (افصل بينها بفاصلة , )</label>
+                                <textarea id="settingAreas" rows="3" placeholder="مثال: المنطقة الأولى، المنطقة الثانية، الحي المتميز"></textarea>
+                                <small style="color: var(--text-muted);">هتظهر للمالك وهو بيضيف ملعبه وللعميل في الفلتر</small>
                             </div>
                             <button type="submit" class="btn btn-primary" id="saveSettingsBtn">احفظ الإعدادات</button>
                         </form>

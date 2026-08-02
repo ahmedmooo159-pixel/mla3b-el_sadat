@@ -235,6 +235,9 @@ async function loadSettings() {
             document.getElementById('settingVCash').value = settings.vodafone_cash_number;
             document.getElementById('settingInstapay').value = settings.instapay_link;
             document.getElementById('settingMonthlyFee').value = settings.monthly_subscription_fee;
+            if (settings.areas && Array.isArray(settings.areas)) {
+                document.getElementById('settingAreas').value = settings.areas.join('، ');
+            }
         }
     } catch (err) {
         console.error(err);
@@ -248,6 +251,9 @@ async function saveSettings(e) {
     btn.textContent = 'جاري الحفظ...';
     
     try {
+        const areasStr = document.getElementById('settingAreas').value || '';
+        const areasArray = areasStr.split(/[,،]/).map(s => s.trim()).filter(s => s);
+        
         const { error } = await supabaseClient
             .from('platform_settings')
             .upsert({
@@ -255,6 +261,7 @@ async function saveSettings(e) {
                 vodafone_cash_number: document.getElementById('settingVCash').value,
                 instapay_link: document.getElementById('settingInstapay').value,
                 monthly_subscription_fee: parseFloat(document.getElementById('settingMonthlyFee').value),
+                areas: areasArray,
                 updated_at: new Date().toISOString()
             }, { onConflict: ['id'] });
             
