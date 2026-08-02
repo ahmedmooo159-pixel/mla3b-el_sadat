@@ -5,9 +5,15 @@ const daysMap = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأرب
 // Global state
 // Global state
 // Global state
+// let _allSlots = [];
+// let _allBookings = [];
+// let _next7Days = [];
+// let currentActiveDateStr = null;
+// Global state
 let _allSlots = [];
 let _allBookings = [];
 let _next7Days = [];
+let currentSelectedDuration = 60; // المدة الافتراضية بالدقايق
 let currentActiveDateStr = null;
 
 
