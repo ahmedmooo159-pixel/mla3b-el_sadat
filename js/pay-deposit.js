@@ -107,10 +107,13 @@ async function handleDepositUpload(e, recurringId) {
         if (uploadErr) throw new Error("فشل رفع الصورة: " + uploadErr.message);
         
         // Update recurring booking with deposit screenshot
+        // Update via RPC to bypass RLS for public users
         const { error: updateErr } = await supabaseClient
-            .from('recurring_bookings')
-            .update({ deposit_screenshot: fileName })
-            .eq('id', recurringId);
+            .rpc('upload_recurring_receipt', {
+                p_recurring_id: recurringId,
+                p_screenshot: fileName
+            });
+            
         if (updateErr) throw new Error("تم الرفع لكن فشل التحديث: " + updateErr.message);
         
         // Create the first upcoming occurrence for confirmation
