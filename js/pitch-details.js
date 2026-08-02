@@ -5,15 +5,9 @@ const daysMap = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأرب
 // Global state
 // Global state
 // Global state
-// let _allSlots = [];
-// let _allBookings = [];
-// let _next7Days = [];
-// let currentActiveDateStr = null;
-// Global state
 let _allSlots = [];
 let _allBookings = [];
 let _next7Days = [];
-let currentSelectedDuration = 60; // المدة الافتراضية بالدقايق
 let currentActiveDateStr = null;
 
 
@@ -338,6 +332,7 @@ function renderSlotsForDay(dateStr) {
     
     const dayWorkingHours = _allSlots.filter(s => s.day_of_week === dayInfo.dayOfWeek);
     
+    const now = new Date();
     const isToday = dayInfo.dateStr === _next7Days[0].dateStr;
     const nowMins = isToday ? (now.getHours() * 60 + now.getMinutes()) : 0;
     
