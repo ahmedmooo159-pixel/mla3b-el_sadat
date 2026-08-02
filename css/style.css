@@ -519,3 +519,60 @@ body {
     position: relative;
     z-index: 1;
 }
+
+/* ==========================================
+   Responsive Design & Mobile Fixes
+   ========================================== */
+html, body {
+    overflow-x: hidden;
+    width: 100%;
+}
+
+@media (max-width: 768px) {
+    .main-header {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .nav-links {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 15px;
+    }
+    
+    .hero-content h2 {
+        font-size: 2rem;
+    }
+    
+    .slots-grid, .days-tabs, .pitches-grid {
+        display: grid;
+        grid-template-columns: 1fr; /* Stack on mobile */
+        overflow-x: hidden;
+        width: 100%;
+    }
+    
+    .days-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        justify-content: center;
+    }
+    
+    .day-tab {
+        flex: 1 1 calc(33% - 10px); /* 3 in a row max on small screens */
+        padding: 10px;
+        font-size: 0.85rem;
+    }
+
+    .modal-content {
+        width: 95%;
+        padding: 20px;
+        margin: 10px;
+    }
+    
+    /* Ensure any form controls stay inside limits */
+    .form-group input, .form-group textarea, .form-group select {
+        max-width: 100%;
+    }
+}
+

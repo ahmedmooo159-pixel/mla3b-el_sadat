@@ -196,3 +196,100 @@ SET search_path = public
 AS $$
   SELECT * FROM public.recurring_bookings WHERE customer_phone = p_phone;
 $$;
+
+CREATE OR REPLACE FUNCTION public.upload_booking_receipt(p_booking_id UUID, p_screenshot TEXT)
+RETURNS void
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  UPDATE public.bookings 
+  SET payment_screenshot = p_screenshot 
+  WHERE id = p_booking_id;
+$$;
+
+CREATE OR REPLACE FUNCTION public.upload_recurring_receipt(p_recurring_id UUID, p_screenshot TEXT)
+RETURNS void
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  UPDATE public.recurring_bookings 
+  SET deposit_screenshot = p_screenshot 
+  WHERE id = p_recurring_id;
+$$;
+
+-- 8. Atomic Booking to prevent Double Booking
+CREATE OR REPLACE FUNCTION public.create_booking_atomically(
+    p_pitch_id UUID,
+    p_slot_id UUID,
+    p_booking_date DATE,
+    p_start_time TIME,
+    p_end_time TIME,
+    p_customer_name TEXT,
+    p_customer_phone TEXT,
+    p_source TEXT
+)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_overlap_count INT;
+    v_start_ts TIMESTAMP;
+    v_end_ts TIMESTAMP;
+    v_b_start_ts TIMESTAMP;
+    v_b_end_ts TIMESTAMP;
+    v_new_id UUID;
+    v_rec RECORD;
+BEGIN
+    v_start_ts := p_booking_date + p_start_time;
+    v_end_ts := p_booking_date + p_end_time;
+    IF p_end_time <= p_start_time THEN
+        v_end_ts := v_end_ts + interval '1 day';
+    END IF;
+
+    PERFORM 1 FROM public.pitches WHERE id = p_pitch_id FOR UPDATE;
+
+    v_overlap_count := 0;
+    
+    FOR v_rec IN 
+        SELECT booking_date, start_time, end_time, status, created_at
+        FROM public.bookings
+        WHERE pitch_id = p_pitch_id
+          AND booking_date >= (p_booking_date - interval '1 day')::DATE
+          AND booking_date <= (p_booking_date + interval '1 day')::DATE
+          AND status IN ('confirmed', 'pending_payment')
+    LOOP
+        IF v_rec.status = 'pending_payment' AND (extract(epoch from (now() - v_rec.created_at))/60) > 10 THEN
+            CONTINUE;
+        END IF;
+
+        v_b_start_ts := v_rec.booking_date + v_rec.start_time;
+        v_b_end_ts := v_rec.booking_date + v_rec.end_time;
+        IF v_rec.end_time <= v_rec.start_time THEN
+            v_b_end_ts := v_b_end_ts + interval '1 day';
+        END IF;
+
+        IF GREATEST(v_start_ts, v_b_start_ts) < LEAST(v_end_ts, v_b_end_ts) THEN
+            v_overlap_count := v_overlap_count + 1;
+            EXIT;
+        END IF;
+    END LOOP;
+
+    IF v_overlap_count > 0 THEN
+        RAISE EXCEPTION 'overlap';
+    END IF;
+
+    INSERT INTO public.bookings (
+        pitch_id, slot_id, booking_date, start_time, end_time, 
+        customer_name, customer_phone, source, status
+    ) VALUES (
+        p_pitch_id, p_slot_id, p_booking_date, p_start_time, p_end_time,
+        p_customer_name, p_customer_phone, p_source, 'pending_payment'
+    ) RETURNING id INTO v_new_id;
+
+    RETURN json_build_object('id', v_new_id);
+END;
+$$;

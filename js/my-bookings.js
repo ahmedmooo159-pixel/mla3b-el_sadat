@@ -32,7 +32,7 @@ async function fetchAllBookings(phone) {
         // Fetch normal bookings
         const { data: bookings, error: bErr } = await supabaseClient
             .rpc('get_bookings_by_phone', { p_phone: phone })
-            .select(`id, status, booking_date, start_time, end_time, created_at, slots(day_of_week, start_time, end_time, pitches(name, location, price_per_hour, cancel_cutoff_hours, refund_percent_after_cutoff))`)
+            .select(`id, status, booking_date, start_time, end_time, created_at, payment_screenshot, slots(day_of_week, start_time, end_time, pitches(name, location, price_per_hour, cancel_cutoff_hours, refund_percent_after_cutoff))`)
             .neq('source', 'manual')
             .order('created_at', { ascending: false });
         
