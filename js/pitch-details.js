@@ -8,7 +8,6 @@ const daysMap = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأرب
 let _allSlots = [];
 let _allBookings = [];
 let _next7Days = [];
-let currentSelectedDuration = 60; // المدة الافتراضية بالدقايق
 let currentActiveDateStr = null;
 
 
@@ -32,18 +31,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const recurringForm = document.getElementById('recurringForm');
     if (recurringForm) recurringForm.addEventListener('submit', handleRecurringSubmit);
-    // Duration selector buttons
-    document.querySelectorAll('.duration-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('.duration-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            currentSelectedDuration = parseInt(btn.dataset.duration, 10);
-            if (currentActiveDateStr) {
-                renderSlotsForDay(currentActiveDateStr);
-            }
-        });
-    });
-    // Removed old picker event listeners
 });
 
 // ==========================================
@@ -325,105 +312,372 @@ function renderSlotsForDay(dateStr) {
     const slotsContainer = document.getElementById('slotsContainer');
     slotsContainer.innerHTML = '';
     
-    const durationContainer = document.getElementById('durationContainer');
-    if (durationContainer) durationContainer.style.display = 'block';
+    const gapsView = document.getElementById('gapsView');
+    if (gapsView) gapsView.style.display = 'block';
+    const manualView = document.getElementById('manualEntryView');
+    if (manualView) manualView.style.display = 'none';
+    const tabGaps = document.getElementById('tabGaps');
+    if (tabGaps) {
+        tabGaps.classList.remove('btn-outline');
+        tabGaps.classList.add('btn-primary');
+    }
+    const tabManual = document.getElementById('tabManual');
+    if (tabManual) {
+        tabManual.classList.remove('btn-primary');
+        tabManual.classList.add('btn-outline');
+    }
     
     const dayInfo = _next7Days.find(d => d.dateStr === dateStr);
     if (!dayInfo) return;
     
     const dayWorkingHours = _allSlots.filter(s => s.day_of_week === dayInfo.dayOfWeek);
     
-    const now = new Date();
+    const isToday = dayInfo.dateStr === _next7Days[0].dateStr;
+    const nowMins = isToday ? (now.getHours() * 60 + now.getMinutes()) : 0;
+    
     let hasAvailableSlots = false;
     
-    dayWorkingHours.forEach(workingBlock => {
-        let blockStartMins = timeStrToMins(workingBlock.start_time);
-        let blockEndMins = timeStrToMins(workingBlock.end_time);
-        if (blockEndMins <= blockStartMins) blockEndMins += 24 * 60; // Overnight
-        
-        // Generate possible start times in 30-min increments
-        for (let m = blockStartMins; m + currentSelectedDuration <= blockEndMins; m += 30) {
-            
-            if (dayInfo.dateStr === _next7Days[0].dateStr) {
-                const nowMins = now.getHours() * 60 + now.getMinutes();
-                if (m <= nowMins) continue;
-            }
-
-            const reqStart = m;
-            const reqEnd = m + currentSelectedDuration;
-
-            const isOverlapping = _allBookings.some(b => {
-                if (b.booking_date !== dayInfo.dateStr) return false;
-                if (b.status === 'rejected' || b.status === 'cancelled') return false;
-                if (b.status === 'pending_payment' && (now - new Date(b.created_at)) / 60000 > 10) return false;
-
-                let bs = 0, be = 0;
-                if (b.start_time && b.end_time) {
-                    bs = timeStrToMins(b.start_time);
-                    be = timeStrToMins(b.end_time);
-                    if (be <= bs) be += 24 * 60;
-                } else if (b.slot_id) {
-                    const s = _allSlots.find(slotItem => slotItem.id === b.slot_id);
-                    if (!s) return false;
-                    bs = timeStrToMins(s.start_time);
-                    be = timeStrToMins(s.end_time);
-                    if (be <= bs) be += 24 * 60;
-                } else {
-                    return false;
-                }
-                
-                return bs < reqEnd && be > reqStart;
-            });
-
-            if (!isOverlapping) {
-                hasAvailableSlots = true;
-                
-                const startStr = minsToTimeStr(reqStart);
-                const endStr = minsToTimeStr(reqEnd);
-                
-                const startF = formatArabicTime(startStr);
-                const endF = formatArabicTime(endStr);
-                
-                const displayDate = dayInfo.dateObj.toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' });
-                const dayName = daysMap[dayInfo.dayOfWeek];
-                
-                const price = Math.round((currentSelectedDuration / 60) * (window._pitchPrice || 0));
-
-                const el = document.createElement('div');
-                el.className = 'slot-card animate-fade-in';
-
-                el.innerHTML = `
-                    <div class="slot-time" style="justify-content:center; font-size:1.1rem; margin-top:5px; color: var(--primary-color);">
-                        ${startF} - ${endF}
-                    </div>
-                    <div style="font-size:0.85rem; color:var(--text-muted); text-align:center; margin-top:5px;">
-                        المدة: ${currentSelectedDuration / 60} ساعة | السعر: ${price} جنيه
-                    </div>
-                    <button class="btn btn-primary btn-full" style="margin-top:15px; font-size:1rem; padding:10px;"
-                        onclick="openBookingModal('${workingBlock.id}','${dayInfo.dateStr}','${dayName}','${displayDate}','${startF}','${endF}','${startStr}','${endStr}', ${price})">
-                        احجز الموعد
-                    </button>
-                    <button class="btn btn-full" style="margin-top:8px; font-size:0.85rem; padding:8px; background:rgba(139,92,246,0.15); border:1px solid #8b5cf6; color:#8b5cf6; border-radius:8px; cursor:pointer;"
-                        onclick="openRecurringModal('${workingBlock.id}','${dayName}','${startF}','${endF}', ${price}, '${startStr}', '${endStr}')">
-                        🔁 حجز أسبوعي ثابت
-                    </button>
-                `;
-                slotsContainer.appendChild(el);
+    // Get all bookings for this day and normalize their start/end times
+    const dayBookings = _allBookings.filter(b => {
+        if (b.booking_date !== dayInfo.dateStr) return false;
+        if (b.status === 'rejected' || b.status === 'cancelled') return false;
+        if (b.status === 'pending_payment' && (now - new Date(b.created_at)) / 60000 > 10) return false;
+        return true;
+    }).map(b => {
+        let bs = 0, be = 0;
+        if (b.start_time && b.end_time) {
+            bs = timeStrToMins(b.start_time);
+            be = timeStrToMins(b.end_time);
+            if (be <= bs) be += 24 * 60;
+        } else if (b.slot_id) {
+            const s = _allSlots.find(slotItem => slotItem.id === b.slot_id);
+            if (s) {
+                bs = timeStrToMins(s.start_time);
+                be = timeStrToMins(s.end_time);
+                if (be <= bs) be += 24 * 60;
             }
         }
+        return { start: bs, end: be };
+    }).filter(b => b.start < b.end);
+    
+    dayBookings.sort((a, b) => a.start - b.start);
+    
+    const displayDate = dayInfo.dateObj.toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' });
+    const dayName = daysMap[dayInfo.dayOfWeek];
+    
+    dayWorkingHours.forEach(workingBlock => {
+        let blockStart = timeStrToMins(workingBlock.start_time);
+        let blockEnd = timeStrToMins(workingBlock.end_time);
+        if (blockEnd <= blockStart) blockEnd += 24 * 60; 
+        
+        if (isToday && blockStart < nowMins) {
+            blockStart = Math.ceil(nowMins / 30) * 30; // Round up to nearest 30 mins
+        }
+        
+        if (blockStart >= blockEnd) return;
+        
+        let currentGapStart = blockStart;
+        const gaps = [];
+        
+        for (const booking of dayBookings) {
+            let bStart = booking.start;
+            let bEnd = booking.end;
+            
+            // Align overnight bookings if necessary
+            if (bStart < blockStart - 12 * 60 && blockEnd > 24 * 60) {
+                 bStart += 24 * 60;
+                 bEnd += 24 * 60;
+            }
+            
+            if (bEnd <= currentGapStart) continue;
+            if (bStart >= blockEnd) continue;
+            
+            if (bStart > currentGapStart) {
+                gaps.push({ start: currentGapStart, end: Math.min(bStart, blockEnd) });
+            }
+            currentGapStart = Math.max(currentGapStart, bEnd);
+        }
+        
+        if (currentGapStart < blockEnd) {
+            gaps.push({ start: currentGapStart, end: blockEnd });
+        }
+        
+        // Render each free gap
+        gaps.forEach(gap => {
+            const gapDuration = gap.end - gap.start;
+            if (gapDuration < 60) return; // Minimum 1 hour
+            
+            hasAvailableSlots = true;
+            
+            const startStr = minsToTimeStr(gap.start);
+            const endStr = minsToTimeStr(gap.end);
+            const startF = formatArabicTime(startStr);
+            const endF = formatArabicTime(endStr);
+            
+            const gapEl = document.createElement('div');
+            gapEl.className = 'slot-card animate-fade-in';
+            gapEl.innerHTML = `
+                <div style="background: rgba(34,197,94,0.1); color: #10b981; padding: 10px; border-radius: 8px; text-align: center; margin-bottom: 15px; border: 1px dashed #10b981;">
+                    <strong>متاح من ${startF} إلى ${endF}</strong>
+                </div>
+                <div class="form-group" style="text-align: right; margin-bottom: 10px;">
+                    <label style="font-size: 0.85rem;">اختار وقت البداية:</label>
+                    <input type="time" class="gap-start-time" value="${startStr}">
+                </div>
+                <div class="form-group" style="text-align: right; margin-bottom: 15px;">
+                    <label style="font-size: 0.85rem;">اختار وقت النهاية:</label>
+                    <input type="time" class="gap-end-time" value="${minsToTimeStr(gap.start + 60)}">
+                </div>
+                <div class="gap-error error-message" style="margin-bottom: 10px; display: none;"></div>
+                <button class="btn btn-primary btn-full" style="padding: 10px;" onclick="bookFromGap(this, '${workingBlock.id}', '${dayInfo.dateStr}', '${dayName}', '${displayDate}', ${gap.start}, ${gap.end})">
+                    تأكيد الميعاد
+                </button>
+                <button class="btn btn-full" style="margin-top:8px; font-size:0.85rem; padding:8px; background:rgba(139,92,246,0.15); border:1px solid #8b5cf6; color:#8b5cf6; border-radius:8px; cursor:pointer;"
+                        onclick="bookRecurringFromGap(this, '${workingBlock.id}', '${dayName}', ${gap.start}, ${gap.end})">
+                    🔁 حجز أسبوعي ثابت
+                </button>
+            `;
+            slotsContainer.appendChild(gapEl);
+        });
     });
     
     if (!hasAvailableSlots) {
-        slotsContainer.innerHTML = `
-            <div style="grid-column: 1 / -1; text-align: center; padding: 40px; background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border-color);">
-                <i data-lucide="calendar-x" style="width:48px;height:48px;color:var(--text-muted);margin-bottom:15px;"></i>
-                <p style="color:var(--text-muted); font-size:1.1rem;">مفيش مواعيد فاضية لـ المدة اللي اخترتها، جرب تغير المدة أو اختار يوم تاني.</p>
-            </div>
-        `;
+        document.getElementById('slotsContainer').style.display = 'none';
+        document.getElementById('noSlotsMsg').style.display = 'block';
+    } else {
+        document.getElementById('slotsContainer').style.display = 'grid';
+        document.getElementById('noSlotsMsg').style.display = 'none';
     }
     
     lucide.createIcons();
 }
+
+window.switchBookingTab = function(tab) {
+    const tabGaps = document.getElementById('tabGaps');
+    const tabManual = document.getElementById('tabManual');
+    const gapsView = document.getElementById('gapsView');
+    const manualView = document.getElementById('manualEntryView');
+    
+    if (tab === 'gaps') {
+        tabGaps.classList.remove('btn-outline');
+        tabGaps.classList.add('btn-primary');
+        tabManual.classList.remove('btn-primary');
+        tabManual.classList.add('btn-outline');
+        
+        gapsView.style.display = 'block';
+        manualView.style.display = 'none';
+    } else {
+        tabManual.classList.remove('btn-outline');
+        tabManual.classList.add('btn-primary');
+        tabGaps.classList.remove('btn-primary');
+        tabGaps.classList.add('btn-outline');
+        
+        manualView.style.display = 'block';
+        gapsView.style.display = 'none';
+        document.getElementById('manualErrorMsg').style.display = 'none';
+    }
+};
+
+window.bookFromGap = function(btn, slotId, dateStr, dayName, displayDate, gapStartMins, gapEndMins) {
+    const card = btn.closest('.slot-card');
+    const errDiv = card.querySelector('.gap-error');
+    errDiv.style.display = 'none';
+    
+    const startTimeStr = card.querySelector('.gap-start-time').value;
+    const endTimeStr = card.querySelector('.gap-end-time').value;
+    
+    if (!startTimeStr || !endTimeStr) {
+        errDiv.textContent = 'الرجاء اختيار وقت البداية والنهاية.';
+        errDiv.style.display = 'block';
+        return;
+    }
+    
+    let startMins = timeStrToMins(startTimeStr);
+    let endMins = timeStrToMins(endTimeStr);
+    
+    if (endMins <= startMins) endMins += 24 * 60;
+    
+    if (startMins < gapStartMins && gapEndMins > 24 * 60) {
+        startMins += 24 * 60;
+        endMins += 24 * 60;
+    }
+    
+    if (startMins < gapStartMins || endMins > gapEndMins) {
+        errDiv.textContent = 'الميعاد المختار خارج الفترة المتاحة.';
+        errDiv.style.display = 'block';
+        return;
+    }
+    
+    const durationMins = endMins - startMins;
+    if (durationMins < 60) {
+        errDiv.textContent = 'أقل مدة للحجز هي ساعة واحدة.';
+        errDiv.style.display = 'block';
+        return;
+    }
+    
+    const price = Math.round((durationMins / 60) * (window._pitchPrice || 0));
+    const startF = formatArabicTime(minsToTimeStr(startMins));
+    const endF = formatArabicTime(minsToTimeStr(endMins));
+    
+    openBookingModal(slotId, dateStr, dayName, displayDate, startF, endF, minsToTimeStr(startMins), minsToTimeStr(endMins), price);
+};
+
+window.bookRecurringFromGap = function(btn, slotId, dayName, gapStartMins, gapEndMins) {
+    const card = btn.closest('.slot-card');
+    const errDiv = card.querySelector('.gap-error');
+    errDiv.style.display = 'none';
+    
+    const startTimeStr = card.querySelector('.gap-start-time').value;
+    const endTimeStr = card.querySelector('.gap-end-time').value;
+    
+    if (!startTimeStr || !endTimeStr) {
+        errDiv.textContent = 'الرجاء اختيار وقت البداية والنهاية.';
+        errDiv.style.display = 'block';
+        return;
+    }
+    
+    let startMins = timeStrToMins(startTimeStr);
+    let endMins = timeStrToMins(endTimeStr);
+    
+    if (endMins <= startMins) endMins += 24 * 60;
+    
+    if (startMins < gapStartMins && gapEndMins > 24 * 60) {
+        startMins += 24 * 60;
+        endMins += 24 * 60;
+    }
+    
+    if (startMins < gapStartMins || endMins > gapEndMins) {
+        errDiv.textContent = 'الميعاد المختار خارج الفترة المتاحة.';
+        errDiv.style.display = 'block';
+        return;
+    }
+    
+    const durationMins = endMins - startMins;
+    if (durationMins < 60) {
+        errDiv.textContent = 'أقل مدة للحجز هي ساعة واحدة.';
+        errDiv.style.display = 'block';
+        return;
+    }
+    
+    const price = Math.round((durationMins / 60) * (window._pitchPrice || 0));
+    const startF = formatArabicTime(minsToTimeStr(startMins));
+    const endF = formatArabicTime(minsToTimeStr(endMins));
+    
+    openRecurringModal(slotId, dayName, startF, endF, price, minsToTimeStr(startMins), minsToTimeStr(endMins));
+};
+
+window.checkManualBooking = function() {
+    const errorMsg = document.getElementById('manualErrorMsg');
+    const startTimeStr = document.getElementById('manualStartTime').value;
+    const endTimeStr = document.getElementById('manualEndTime').value;
+    errorMsg.style.display = 'none';
+    
+    if (!startTimeStr || !endTimeStr) {
+        errorMsg.textContent = 'الرجاء اختيار وقت البداية والنهاية.';
+        errorMsg.style.display = 'block';
+        return;
+    }
+    
+    let startMins = timeStrToMins(startTimeStr);
+    let endMins = timeStrToMins(endTimeStr);
+    if (endMins <= startMins) endMins += 24 * 60;
+    
+    if (endMins - startMins < 60) {
+        errorMsg.textContent = 'أقل مدة للحجز هي ساعة واحدة.';
+        errorMsg.style.display = 'block';
+        return;
+    }
+    
+    if (!currentActiveDateStr) {
+        errorMsg.textContent = 'الرجاء اختيار اليوم أولاً.';
+        errorMsg.style.display = 'block';
+        return;
+    }
+    
+    const dayInfo = _next7Days.find(d => d.dateStr === currentActiveDateStr);
+    const dayWorkingHours = _allSlots.filter(s => s.day_of_week === dayInfo.dayOfWeek);
+    
+    let isWithinWorkingHours = false;
+    let matchingWorkingBlock = null;
+    let actualStartMins = startMins;
+    let actualEndMins = endMins;
+    
+    for (const workingBlock of dayWorkingHours) {
+        let blockStart = timeStrToMins(workingBlock.start_time);
+        let blockEnd = timeStrToMins(workingBlock.end_time);
+        if (blockEnd <= blockStart) blockEnd += 24 * 60;
+        
+        let reqStart = startMins;
+        let reqEnd = endMins;
+        
+        if (reqStart < blockStart - 12 * 60 && blockEnd > 24 * 60) {
+            reqStart += 24 * 60;
+            reqEnd += 24 * 60;
+        }
+        
+        if (reqStart >= blockStart && reqEnd <= blockEnd) {
+            isWithinWorkingHours = true;
+            matchingWorkingBlock = workingBlock;
+            actualStartMins = reqStart;
+            actualEndMins = reqEnd;
+            break;
+        }
+    }
+    
+    if (!isWithinWorkingHours) {
+        errorMsg.innerHTML = 'الميعاد ده خارج ساعات عمل الملعب لليوم ده.<br><a href="javascript:void(0)" onclick="switchBookingTab(\'gaps\')" style="color:var(--primary-color);text-decoration:underline;">شوف المواعيد المتاحة هنا</a>';
+        errorMsg.style.display = 'block';
+        return;
+    }
+    
+    // Check overlaps with bookings
+    const now = new Date();
+    const isOverlapping = _allBookings.some(b => {
+        if (b.booking_date !== dayInfo.dateStr) return false;
+        if (b.status === 'rejected' || b.status === 'cancelled') return false;
+        if (b.status === 'pending_payment' && (now - new Date(b.created_at)) / 60000 > 10) return false;
+
+        let bs = 0, be = 0;
+        if (b.start_time && b.end_time) {
+            bs = timeStrToMins(b.start_time);
+            be = timeStrToMins(b.end_time);
+            if (be <= bs) be += 24 * 60;
+        } else if (b.slot_id) {
+            const s = _allSlots.find(slotItem => slotItem.id === b.slot_id);
+            if (!s) return false;
+            bs = timeStrToMins(s.start_time);
+            be = timeStrToMins(s.end_time);
+            if (be <= bs) be += 24 * 60;
+        } else {
+            return false;
+        }
+        
+        // Align booking times if necessary relative to our actualStartMins
+        if (bs < actualStartMins - 12 * 60 && actualStartMins > 24 * 60) {
+             bs += 24 * 60;
+             be += 24 * 60;
+        }
+
+        return bs < actualEndMins && be > actualStartMins;
+    });
+    
+    if (isOverlapping) {
+        errorMsg.innerHTML = 'الميعاد ده متعارض مع حجز تاني.<br><a href="javascript:void(0)" onclick="switchBookingTab(\'gaps\')" style="color:var(--primary-color);text-decoration:underline;">شوف الفترات الفاضية من هنا</a>';
+        errorMsg.style.display = 'block';
+        return;
+    }
+    
+    // If all clear, proceed to booking modal!
+    const durationMins = actualEndMins - actualStartMins;
+    const price = Math.round((durationMins / 60) * (window._pitchPrice || 0));
+    const startF = formatArabicTime(minsToTimeStr(actualStartMins));
+    const endF = formatArabicTime(minsToTimeStr(actualEndMins));
+    const displayDate = dayInfo.dateObj.toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' });
+    const dayName = daysMap[dayInfo.dayOfWeek];
+    
+    openBookingModal(matchingWorkingBlock.id, dayInfo.dateStr, dayName, displayDate, startF, endF, minsToTimeStr(actualStartMins), minsToTimeStr(actualEndMins), price);
+};
+
 
 // ==========================================
 // RECURRING BOOKING

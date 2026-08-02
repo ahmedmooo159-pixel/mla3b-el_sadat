@@ -110,27 +110,40 @@
                             <!-- Tabs populated by JS -->
                         </div>
 
-                        <!-- Duration Selector -->
-                        <div id="durationContainer" style="display: none; margin-bottom: 25px; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 15px; border: 1px solid var(--border-color);">
-                            <label style="display:block; margin-bottom:12px; font-weight:bold; color:var(--text-light); font-size:0.95rem;">
-                                <i data-lucide="clock" style="width:16px;height:16px;vertical-align:middle;margin-left:5px;"></i>
-                                مدة الحجز المطلوبة:
-                            </label>
-                            <div style="display: flex; gap: 10px;">
-                                <button type="button" class="duration-btn active" data-duration="60">ساعة</button>
-                                <button type="button" class="duration-btn" data-duration="90">ساعة ونص</button>
-                                <button type="button" class="duration-btn" data-duration="120">ساعتين</button>
+                        <!-- Booking Options Tabs -->
+                        <div class="booking-tabs" style="display: flex; gap: 10px; margin-bottom: 20px;">
+                            <button type="button" id="tabGaps" class="btn btn-primary" style="flex: 1; border-radius: 8px;" onclick="switchBookingTab('gaps')">المواعيد المتاحة</button>
+                            <button type="button" id="tabManual" class="btn btn-outline" style="flex: 1; border-radius: 8px;" onclick="switchBookingTab('manual')">حدد ميعادك بنفسك</button>
+                        </div>
+
+                        <!-- Gaps View -->
+                        <div id="gapsView">
+                            <div id="slotsContainer" class="slots-grid">
+                                <!-- Gaps will be populated here -->
                             </div>
                         </div>
 
-                        <div id="slotsContainer" class="slots-grid">
-                            <!-- Slots will be populated here -->
+                        <!-- Manual Entry View -->
+                        <div id="manualEntryView" style="display: none; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px;">
+                            <h4 style="margin-bottom: 15px; color: var(--primary-color);">اختار وقت البداية والنهاية</h4>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                                <div class="form-group">
+                                    <label>من الساعة:</label>
+                                    <input type="time" id="manualStartTime" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>إلى الساعة:</label>
+                                    <input type="time" id="manualEndTime" required>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-primary btn-full" onclick="checkManualBooking()">احجز الميعاد</button>
+                            <div id="manualErrorMsg" class="error-message" style="margin-top: 15px; display: none;"></div>
                         </div>
                         
                         <div id="noSlotsMsg" class="empty-state" style="display: none; padding: 30px;">
                             <i data-lucide="calendar-x"></i>
-                            <h4>مفيش مواعيد متاحة حالياً! 😞</h4>
-                            <p style="font-size: 0.9rem;">صاحب الملعب لسه مضفش مواعيد جديده للحجز.</p>
+                            <h4>مفيش مواعيد متاحة في اليوم ده! 😞</h4>
+                            <p style="font-size: 0.9rem;">جرب يوم تاني أو تواصل مع الملعب.</p>
                         </div>
                     </div>
                 </div>
