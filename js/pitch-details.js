@@ -382,12 +382,12 @@ function renderSlotsForDay(dateStr) {
     });
     
     if (!hasAvailableSlots) {
-        slotsContainer.innerHTML = \`
+        slotsContainer.innerHTML = `
             <div style="grid-column: 1 / -1; text-align: center; padding: 40px; background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border-color);">
                 <i data-lucide="calendar-x" style="width:48px;height:48px;color:var(--text-muted);margin-bottom:15px;"></i>
                 <p style="color:var(--text-muted); font-size:1.1rem;">كل المواعيد في اليوم ده محجوزة، جرب تختار يوم تاني.</p>
             </div>
-        \`;
+        `;
     }
     
     lucide.createIcons();
