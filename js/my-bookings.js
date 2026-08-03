@@ -95,7 +95,7 @@ function renderBookings(bookings) {
         const startT = booking.start_time || slot.start_time;
         const endT = booking.end_time || slot.end_time;
         let cancelBtn = '';
-        if (booking.status === 'confirmed') {
+        if (booking.status === 'confirmed' || (booking.status === 'pending_payment' && booking.payment_screenshot)) {
             const cutoff = pitch.cancel_cutoff_hours || 24;
             const refundPct = pitch.refund_percent_after_cutoff ?? 0;
             const matchDateTime = new Date(booking.booking_date + 'T' + startT);
@@ -183,15 +183,22 @@ function renderRecurringSection(recurring) {
                 ? `<a href="pay-weekly.html?id=${latestOccurrence.id}" class="btn" style="background:#10b981;color:white;padding:8px 15px;border-radius:8px;font-size:0.85rem;text-decoration:none;display:inline-block;margin-top:8px;">دفع هذا الأسبوع</a>`
                 : '';
             
+            const cancelOccBtn = `<button class="btn" style="background:transparent;border:1px solid #ef4444;color:#ef4444;padding:8px 15px;border-radius:8px;font-size:0.85rem;display:inline-block;margin-top:8px;margin-right:5px;cursor:pointer;" onclick="cancelOccurrence('${latestOccurrence.id}')">إلغاء هذا الأسبوع</button>`;
+            
             occurrenceHtml = `
                 <div style="margin-top:12px;padding:12px;background:rgba(255,255,255,0.05);border-radius:10px;border:1px solid var(--border-color);">
                     <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:5px;">موعد هذا الأسبوع: <strong>${occDate}</strong></p>
                     <p style="font-size:0.85rem;"><span style="color:${occStatus.color}">${occStatus.label}</span></p>
                     ${payBtn}
+                    ${cancelOccBtn}
                 </div>
             `;
         }
         
+        let cancelRecBtn = rb.status === 'active' 
+            ? `<button class="btn" style="background:transparent;border:1px solid #ef4444;color:#ef4444;padding:8px 15px;border-radius:8px;font-size:0.85rem;width:100%;margin-top:12px;cursor:pointer;" onclick="cancelRecurringBooking('${rb.id}')">إلغاء الاشتراك الأسبوعي نهائياً</button>` 
+            : '';
+
         const card = document.createElement('div');
         card.className = 'animate-fade-in';
         card.style.cssText = 'background: linear-gradient(135deg, rgba(139,92,246,0.1), rgba(59,130,246,0.05)); border: 1px solid #8b5cf6; border-radius: 16px; padding: 20px;';
@@ -206,6 +213,7 @@ function renderRecurringSection(recurring) {
             <p style="margin-bottom:6px;font-weight:600;"><i data-lucide="repeat" style="width:16px;height:16px;color:#8b5cf6;vertical-align:middle;"></i> كل ${daysMap[slot.day_of_week]} — ${formatTimeDisplay(slot.start_time)} إلى ${formatTimeDisplay(slot.end_time)}</p>
             <p style="font-size:0.9rem;color:var(--text-muted);">العربون المدفوع: <strong style="color:#8b5cf6;">${rb.deposit_amount} جنيه</strong></p>
             ${occurrenceHtml}
+            ${cancelRecBtn}
         `;
         container.appendChild(card);
     });
@@ -266,3 +274,39 @@ async function handleCancelSubmit(e) {
         btn.textContent = 'تأكيد الإلغاء';
     }
 }
+
+window.cancelOccurrence = async function(occurrenceId) {
+    if (!confirm('تأكيد إلغاء حجز هذا الأسبوع وتخطيه؟')) return;
+    
+    try {
+        const { error } = await supabaseClient
+            .from('recurring_occurrences')
+            .update({ status: 'skipped' })
+            .eq('id', occurrenceId);
+            
+        if (error) throw error;
+        alert('تم التخطي بنجاح.');
+        const phone = document.getElementById('phoneInput').value.trim();
+        if (phone) fetchAllBookings(phone);
+    } catch (err) {
+        alert('حدث خطأ: ' + err.message);
+    }
+};
+
+window.cancelRecurringBooking = async function(recurringId) {
+    if (!confirm('هل أنت متأكد من إلغاء الاشتراك الأسبوعي نهائياً؟ قد لا تسترد العربون المدفوع إلا بموافقة المالك.')) return;
+    
+    try {
+        const { error } = await supabaseClient
+            .from('recurring_bookings')
+            .update({ status: 'cancelled' })
+            .eq('id', recurringId);
+            
+        if (error) throw error;
+        alert('تم إلغاء الاشتراك الأسبوعي بنجاح.');
+        const phone = document.getElementById('phoneInput').value.trim();
+        if (phone) fetchAllBookings(phone);
+    } catch (err) {
+        alert('حدث خطأ: ' + err.message);
+    }
+};

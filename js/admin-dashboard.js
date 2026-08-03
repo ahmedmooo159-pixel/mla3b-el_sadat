@@ -220,12 +220,43 @@ function renderPitches(pitches) {
                         ${statusLabel}
                     </span>
                     <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 5px;">الانتهاء: ${pitch.subscription_expires_at ? new Date(pitch.subscription_expires_at).toLocaleDateString('ar-EG') : '---'}</p>
+                    <div style="margin-top: 10px;">
+                        ${pitch.subscription_status === 'active' 
+                            ? `<button class="btn" style="background:#ef4444; color:white; padding: 4px 10px; border-radius: 6px; font-size: 0.8rem;" onclick="togglePitchStatus('${pitch.id}', 'inactive')">تعطيل الملعب</button>`
+                            : `<button class="btn" style="background:#10b981; color:white; padding: 4px 10px; border-radius: 6px; font-size: 0.8rem;" onclick="togglePitchStatus('${pitch.id}', 'active')">تفعيل الملعب</button>`
+                        }
+                    </div>
                 </div>
             </div>
         `;
         listDiv.appendChild(el);
     });
 }
+
+window.togglePitchStatus = async function(pitchId, newStatus) {
+    if (!confirm('تأكيد تغيير حالة الملعب؟')) return;
+    
+    try {
+        const { error } = await supabaseClient
+            .from('pitches')
+            .update({ subscription_status: newStatus })
+            .eq('id', pitchId);
+            
+        if (error) throw error;
+        
+        // Refresh the list locally
+        const pIndex = allPitchesData.findIndex(p => p.id === pitchId);
+        if (pIndex !== -1) {
+            allPitchesData[pIndex].subscription_status = newStatus;
+        }
+        
+        const term = document.getElementById('pitchSearch')?.value || '';
+        filterPitches(term);
+        
+    } catch (err) {
+        alert('حدث خطأ: ' + err.message);
+    }
+};
 
 // 3. Settings
 async function loadSettings() {
