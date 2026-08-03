@@ -17,13 +17,10 @@ serve(async (req) => {
     const { data: booking, error: bookingErr } = await supabase
       .from('bookings')
       .select(`
-        id, customer_name, customer_phone, booking_date, status, payment_screenshot,
-        slots (
-          start_time, end_time,
-          pitches (
-            name, owner_id,
-            owners ( telegram_chat_id )
-          )
+        id, customer_name, customer_phone, booking_date, status, payment_screenshot, start_time, end_time,
+        pitches (
+          name, owner_id,
+          owners ( telegram_chat_id )
         )
       `)
       .eq('id', booking_id)
@@ -33,7 +30,7 @@ serve(async (req) => {
       throw new Error("Booking not found")
     }
 
-    const ownerChatId = booking.slots.pitches.owners.telegram_chat_id
+    const ownerChatId = booking.pitches?.owners?.telegram_chat_id
     if (!ownerChatId) {
       console.log("Owner has no telegram_chat_id set. Skipping notification.")
       return new Response(JSON.stringify({ message: "Skipped" }), { headers: { "Content-Type": "application/json" } })
@@ -57,14 +54,13 @@ serve(async (req) => {
     }
 
     // Message text
-    const message = `
 🎉 <b>حجز جديد مؤكد!</b>
 
-<b>الملعب:</b> ${booking.slots.pitches.name}
+<b>الملعب:</b> ${booking.pitches?.name}
 <b>اسم العميل:</b> ${booking.customer_name}
 <b>تليفون العميل:</b> ${booking.customer_phone}
 <b>تاريخ الحجز:</b> ${booking.booking_date}
-<b>الوقت:</b> ${formatTime(booking.slots.start_time)} - ${formatTime(booking.slots.end_time)}
+<b>الوقت:</b> ${formatTime(booking.start_time)} - ${formatTime(booking.end_time)}
 
 <b>رقم الحجز:</b> #${shortId}
     `.trim()

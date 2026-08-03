@@ -2,69 +2,114 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
-const daysMap = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت']
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
 
 serve(async (req) => {
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
   try {
-    const { recurring_id } = await req.json()
-    if (!recurring_id) throw new Error("Missing recurring_id")
+    const { booking_id } = await req.json()
+    if (!booking_id) throw new Error("Missing booking_id")
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL'),
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-    )
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    const { data: rb, error } = await supabase
-      .from('recurring_bookings')
+    // Fetch booking details
+    const { data: booking, error: bookingErr } = await supabase
+      .from('bookings')
       .select(`
-        id, customer_name, customer_phone, deposit_amount,
-        slots (
-          day_of_week, start_time, end_time,
-          pitches (
-            name,
-            owners ( telegram_chat_id )
-          )
+        id, customer_name, customer_phone, booking_date, status, payment_screenshot, start_time, end_time,
+        pitches (
+          name, owner_id,
+          owners ( telegram_chat_id )
         )
       `)
-      .eq('id', recurring_id)
+      .eq('id', booking_id)
       .single()
 
-    if (error || !rb) throw new Error("Recurring booking not found")
+    if (bookingErr || !booking) {
+      throw new Error("Booking not found")
+    }
 
-    const ownerChatId = rb.slots?.pitches?.owners?.telegram_chat_id
+    const ownerChatId = booking.pitches?.owners?.telegram_chat_id
     if (!ownerChatId) {
-      return new Response(JSON.stringify({ message: "No chat ID" }), { headers: { "Content-Type": "application/json" } })
+      console.log("Owner has no telegram_chat_id set. Skipping notification.")
+      return new Response(JSON.stringify({ message: "Skipped" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } })
     }
 
-    const dayName = daysMap[rb.slots.day_of_week]
-    const formatTime = (t) => {
-      const [h, m] = t.split(':')
-      const d = new Date()
-      d.setHours(h, m)
-      return d.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
+    // Generate public URL for the screenshot
+    const { data: publicUrlData } = supabase.storage
+      .from('booking_receipts')
+      .getPublicUrl(booking.payment_screenshot)
+      
+    const imageUrl = publicUrlData.publicUrl
+
+    const shortId = booking.id.split('-')[0]
+    
+    // Format Time
+    const formatTime = (timeStr: string) => {
+        const [h, m] = timeStr.split(':')
+        const d = new Date()
+        d.setHours(Number(h), Number(m))
+        return d.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
     }
 
+    // Message text
     const message = `
-🔁 <b>حجز أسبوعي ثابت جديد!</b>
+🎉 <b>حجز جديد مؤكد!</b>
 
-<b>الملعب:</b> ${rb.slots.pitches.name}
-<b>الموعد الثابت:</b> كل ${dayName} ${formatTime(rb.slots.start_time)} - ${formatTime(rb.slots.end_time)}
-<b>اسم العميل:</b> ${rb.customer_name}
-<b>تليفون العميل:</b> ${rb.customer_phone}
-<b>مبلغ العربون:</b> ${rb.deposit_amount} جنيه ✅
+<b>الملعب:</b> ${booking.pitches?.name}
+<b>اسم العميل:</b> ${booking.customer_name}
+<b>تليفون العميل:</b> ${booking.customer_phone}
+<b>تاريخ الحجز:</b> ${booking.booking_date}
+<b>الوقت:</b> ${formatTime(booking.start_time)} - ${formatTime(booking.end_time)}
 
-تم استلام العربون وتثبيت الموعد الأسبوعي. الموعد لن يظهر لأي عميل آخر من الآن.
+<b>رقم الحجز:</b> #${shortId}
     `.trim()
 
-    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+    // Send Photo to Telegram
+    const telegramApi = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`
+    
+    const response = await fetch(telegramApi, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: ownerChatId, text: message, parse_mode: 'HTML' })
+      body: JSON.stringify({
+        chat_id: ownerChatId,
+        photo: imageUrl,
+        caption: message,
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: [
+            [
+              {
+                text: "❌ إلغاء الحجز (إيصال مزور/خاطئ)",
+                callback_data: `cancel_${booking.id}`
+              }
+            ]
+          ]
+        }
+      })
     })
 
-    return new Response(JSON.stringify({ success: true }), { headers: { "Content-Type": "application/json" } })
+    const tgResult = await response.json()
+
+    return new Response(JSON.stringify({ success: true, tgResult }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    })
 
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 400 })
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    })
   }
 })

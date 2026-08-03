@@ -88,7 +88,7 @@ function renderBookings(bookings) {
         
         let statusObj = statusMap[booking.status] || { label: booking.status, color: '#94a3b8', icon: 'info' };
         if (booking.status === 'pending_payment' && booking.payment_screenshot) {
-            statusObj = { label: 'إيصال مرفوع — في انتظار تأكيد الملعب ⏳', color: '#8b5cf6', icon: 'clock' };
+            statusObj = { label: 'تم تأكيد الحجز 🎉', color: '#10b981', icon: 'check-circle' };
         }
         const bookingDate = new Date(booking.booking_date).toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
         
@@ -111,7 +111,7 @@ function renderBookings(bookings) {
         let payBtn = '';
         if (booking.status === 'pending_payment') {
             if (booking.payment_screenshot) {
-                payBtn = `<p style="color: #8b5cf6; font-size: 0.85rem; margin-top: 10px; text-align: center; font-weight: bold;">✅ تم رفع الإيصال بنجاح. بينتظروا تأكيد صاحب الملعب.</p>`;
+                payBtn = `<p style="color: #10b981; font-size: 0.85rem; margin-top: 10px; text-align: center; font-weight: bold;">✅ تم رفع الإيصال وتم تأكيد الحجز.</p>`;
             } else {
                 const now = new Date();
                 const minsPassed = (now - new Date(booking.created_at)) / 60000;
