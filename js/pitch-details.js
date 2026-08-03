@@ -150,11 +150,22 @@ function openBookingModal(slotId, dateStr, dayName, displayDate, startF, endF, r
     window._pickerBookingData = { dateStr, startTime: rawStart, endTime: rawEnd, slotId, price };
     document.getElementById('modalSlotId').value = slotId;
     document.getElementById('modalBookingDate').value = dateStr;
+
+    const priceHtml = price > 0
+        ? `<div style="margin-top:15px; background:rgba(34,197,94,0.1); border:1px solid var(--primary-color); border-radius:10px; padding:12px; text-align:center;">
+            <i data-lucide="banknote" style="width:18px;height:18px;vertical-align:middle;color:var(--primary-color);"></i>
+            <span style="font-size:1.1rem;"> المبلغ الإجمالي: </span>
+            <strong style="font-size:1.4rem; color:var(--primary-color);">${price.toLocaleString('ar-EG')}</strong>
+            <span style="font-size:1rem;"> جنيه</span>
+           </div>`
+        : '';
+
     document.getElementById('bookingSlotInfo').innerHTML = `
         <i data-lucide="calendar" style="width:16px;height:16px;vertical-align:middle;"></i>
         الموعد: ${dayName} ${displayDate}<br>
         <i data-lucide="clock" style="width:16px;height:16px;vertical-align:middle;"></i>
         الوقت: ${startF} إلى ${endF}
+        ${priceHtml}
     `;
     document.getElementById('bookingModal').style.display = 'flex';
     lucide.createIcons();
@@ -376,24 +387,39 @@ function renderSlotsForDay(dateStr) {
             
             const startF = formatArabicTime(startStr);
             const endF = formatArabicTime(endStr);
-            
+
+            // Detect if gap spans past midnight
             const gapStartMins = startH * 60 + startM + (gap.start.getDate() > blockStart.getDate() ? 24 * 60 : 0);
-            const gapEndMins = endH * 60 + endM + (gap.end.getDate() > blockStart.getDate() ? 24 * 60 : 0);
-            
+            const gapEndMins   = endH * 60 + endM   + (gap.end.getDate()   > blockStart.getDate() ? 24 * 60 : 0);
+            const isOvernightGap = gapEndMins > 24 * 60;
+
+            // Default end time = start + 1h, capped at gap end
+            const defaultEndMins = Math.min(gapStartMins + 60, gapEndMins);
+            const defaultEndStr  = minsToTimeStr(defaultEndMins); // wraps past midnight naturally
+
+            const overnightNote = isOvernightGap
+                ? `<div style="font-size:0.8rem; color:#f59e0b; margin-bottom:10px; display:flex; align-items:center; gap:5px;">
+                    <i data-lucide="moon" style="width:14px;height:14px;"></i>
+                    هذه الفترة تمتد لما بعد منتصف الليل — اختيار وقت من 12ص لـ ${endF} يعني اليوم التالي
+                   </div>`
+                : '';
+
             const gapEl = document.createElement('div');
             gapEl.className = 'slot-card animate-fade-in';
             gapEl.innerHTML = `
-                <div style="background: rgba(34,197,94,0.1); color: #10b981; padding: 10px; border-radius: 8px; text-align: center; margin-bottom: 15px; border: 1px dashed #10b981;">
-                    <strong>متاح من ${startF} إلى ${endF}</strong>
+                <div style="background: rgba(34,197,94,0.1); color: #10b981; padding: 10px; border-radius: 8px; text-align: center; margin-bottom: 12px; border: 1px dashed #10b981;">
+                    <strong>متاح من ${startF} إلى ${endF}${isOvernightGap ? ' (اليوم التالي)' : ''}</strong>
                 </div>
+                ${overnightNote}
                 <div class="form-group" style="text-align: right; margin-bottom: 10px;">
                     <label style="font-size: 0.85rem;">اختار وقت البداية:</label>
                     <input type="time" class="gap-start-time" value="${startStr}">
                 </div>
-                <div class="form-group" style="text-align: right; margin-bottom: 15px;">
+                <div class="form-group" style="text-align: right; margin-bottom: 5px;">
                     <label style="font-size: 0.85rem;">اختار وقت النهاية:</label>
-                    <input type="time" class="gap-end-time" value="${minsToTimeStr(gapStartMins + 60)}">
+                    <input type="time" class="gap-end-time" value="${defaultEndStr}">
                 </div>
+                <div id="price-preview-${gapStartMins}" style="font-size:0.9rem; color:var(--primary-color); text-align:center; margin-bottom:12px; min-height:20px;"></div>
                 <div class="gap-error error-message" style="margin-bottom: 10px; display: none;"></div>
                 <button class="btn btn-primary btn-full" style="padding: 10px;" onclick="bookFromGap(this, '${workingBlock.id}', '${dayInfo.dateStr}', '${dayName}', '${displayDate}', ${gapStartMins}, ${gapEndMins})">
                     تأكيد الميعاد
@@ -403,6 +429,32 @@ function renderSlotsForDay(dateStr) {
                     🔁 حجز أسبوعي ثابت
                 </button>
             `;
+
+            // Live price preview on time change
+            const previewId = `price-preview-${gapStartMins}`;
+            setTimeout(() => {
+                const card = gapEl;
+                const updatePreview = () => {
+                    const sVal = card.querySelector('.gap-start-time').value;
+                    const eVal = card.querySelector('.gap-end-time').value;
+                    if (!sVal || !eVal) return;
+                    let sMins = timeStrToMins(sVal);
+                    let eMins = timeStrToMins(eVal);
+                    if (eMins <= sMins) eMins += 24 * 60;
+                    const dur = eMins - sMins;
+                    if (dur >= 60) {
+                        const p = Math.round((dur / 60) * (window._pitchPrice || 0));
+                        document.getElementById(previewId).innerHTML =
+                            `<i data-lucide="banknote" style="width:14px;height:14px;vertical-align:middle;"></i> المبلغ المتوقع: <strong>${p.toLocaleString('ar-EG')} جنيه</strong>`;
+                        lucide.createIcons();
+                    } else {
+                        document.getElementById(previewId).textContent = '';
+                    }
+                };
+                card.querySelector('.gap-start-time').addEventListener('change', updatePreview);
+                card.querySelector('.gap-end-time').addEventListener('change', updatePreview);
+                updatePreview();
+            }, 0);
             slotsContainer.appendChild(gapEl);
         });
     });

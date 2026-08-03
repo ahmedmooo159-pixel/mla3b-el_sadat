@@ -29,10 +29,11 @@ async function loadPaymentDetails(bookingId) {
         const { data: booking, error: bookingErr } = await supabaseClient
             .from('bookings')
             .select(`
-                id, status, created_at, pitch_id,
+                id, status, created_at, pitch_id, start_time, end_time, slot_id,
                 slots (
+                    start_time, end_time,
                     pitches (
-                        vodafone_cash, instapay_link
+                        price_per_hour, vodafone_cash, instapay_link
                     )
                 )
             `)
@@ -65,20 +66,47 @@ async function loadPaymentDetails(bookingId) {
         
         // Resolve pitch data — slot-based booking OR free-range booking (pitch_id only)
         let pitch = booking.slots?.pitches || null;
-        
+
         if (!pitch && booking.pitch_id) {
             // Free-range booking: fetch pitch directly
             const { data: pitchData, error: pitchErr } = await supabaseClient
                 .from('pitches')
-                .select('vodafone_cash, instapay_link')
+                .select('price_per_hour, vodafone_cash, instapay_link')
                 .eq('id', booking.pitch_id)
                 .single();
             if (pitchErr) throw pitchErr;
             pitch = pitchData;
         }
-        
+
         if (!pitch) throw new Error('تعذّر تحميل بيانات الملعب.');
-        
+
+        // --- Calculate & display total amount ---
+        const pricePerHour = pitch.price_per_hour || 0;
+        // Prefer booking's own start/end; fallback to slot's times
+        const startT = booking.start_time || booking.slots?.start_time;
+        const endT   = booking.end_time   || booking.slots?.end_time;
+        if (startT && endT && pricePerHour > 0) {
+            const toMins = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+            let sMins = toMins(startT);
+            let eMins = toMins(endT);
+            if (eMins <= sMins) eMins += 24 * 60; // overnight
+            const durationHrs = (eMins - sMins) / 60;
+            const totalAmount = Math.round(durationHrs * pricePerHour);
+            const amountEl = document.getElementById('totalAmountBox');
+            if (amountEl) {
+                amountEl.innerHTML = `
+                    <i data-lucide="banknote" style="width:22px;height:22px;vertical-align:middle;color:var(--primary-color);"></i>
+                    <span style="font-size:1.1rem;"> المبلغ المطلوب تحويله: </span>
+                    <strong style="font-size:1.6rem; color:var(--primary-color);">${totalAmount.toLocaleString('ar-EG')}</strong>
+                    <span style="font-size:1rem;"> جنيه</span>
+                    <div style="font-size:0.85rem; color:var(--text-muted); margin-top:5px;">${durationHrs} ساعة × ${pricePerHour.toLocaleString('ar-EG')} جنيه/ساعة</div>
+                `;
+                amountEl.style.display = 'block';
+                lucide.createIcons();
+            }
+        }
+        // -----------------------------------------
+
         document.getElementById('vCashNum').textContent = pitch.vodafone_cash || 'غير محدد من المالك';
         if (pitch.instapay_link) {
             document.getElementById('instaPayDiv').style.display = 'block';
